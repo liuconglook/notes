@@ -1,5 +1,72 @@
 ## Git
 
+### 安装
+
+#### 下载
+
+> windows下载安装即可
+
+https://git-scm.com/downloads
+
+> linux下简单安装
+
+~~~shell
+# 下载安装
+yum install git
+# 查看版本
+git --version
+~~~
+
+> linux下载最新安装
+
+~~~shell
+# 安装依赖包
+yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel gcc perl-ExtUtils-MakeMaker
+# 下载解压，https://mirrors.edge.kernel.org/pub/software/scm/git/选择最新版
+cd /opt # 一般下载放这里
+wget https://www.kernel.org/pub/software/scm/git/git-2.9.5.tar.gz
+tar xzf git-2.9.5.tar.gz
+# 编译安装
+cd  git-2.9.5
+make prefix=/usr/local/git all
+make prefix=/usr/local/git install
+# 配置环境变量
+echo "export PATH=$PATH:/usr/local/git/bin" >>/etc/bashrc
+# 刷新生效
+source /etc/bashrc
+# 查看版本
+git --version
+~~~
+
+#### SSH
+
+~~~shell
+# 1、生成key
+ssh-keygen -t rsa -b 4096 -C "liuconglook@gmail.com" -f "github_id_rsa"
+# 2、将生成的github_id_rsa和github_id_rsa.pub放入用户下的.ssh目录下
+# 3、将pub公钥内容添加到github。头像=>settings=>SSH and GPG keys=>nwe SSH key
+# 4、验证
+ssh -T git@github.com
+
+# 如果有多个秘钥冲突，需创建config文件进行配置
+~~~
+
+> C:/Users/Administrator/.ssh/config
+
+~~~
+# gitee
+Host gitee.com
+HostName gitee.com
+PreferredAuthentications publickey
+IdentityFile ~/.ssh/gitee_id_rsa
+
+# github
+Host github.com
+HostName github.com
+PreferredAuthentications publickey
+IdentityFile ~/.ssh/github_id_rsa
+~~~
+
 ### 图形化
 
 ~~~shell
@@ -17,7 +84,7 @@ git-gui
 ### 仓库
 
 ~~~shell
-# 在当前目录下初始化本地仓库作为项目目录， 可以是一个空目录，可用添加远程仓库拉取代码
+# 在当前目录下初始化本地仓库（该目录下的文件将交由git管理），也可添加远程仓库拉取代码
 git init
 
 # clone远程项目
@@ -33,68 +100,26 @@ git config --local --list
 git config --local --list |grep user
 ~~~
 
-### Git-Flow
+### 远程操作
 
 ~~~shell
-V1.0.0.0
-# master主版本号 产品方向，架构升级
-# 次版本号 一个迭代周期，若干个功能升级
-# 功能号（PR） 一个pull request累计一个
-# 热修复号 测试或上线bug的修复，修复一次累计一个
-~~~
+# clone 远程仓库到本地，origin自动关联了远程仓库
+git clone ssh://git@101.52.4.78:8022/root/plctake.git
 
-- master：主分支
-  - 对外发布
-  - 受保护分支（只读，只能从其他分支（release/hotfix）合并）
-  - 打标签（方便追溯）
+# 添加远程仓库origin
+git remote add origin ssh://git@101.52.4.78:8022/root/plctake.git
 
-- develop：开发分支
-  - 基于master分支的clone。
-  - 受保护分支（只读，只能从其他分支合并）
-    - feature合并到develop
-    - develop拉取release分支，提测
-    - release/hotfix上线完毕，合并到develop并推送远程
+# 拉取到本地仓库
+git pull origin master
 
-- feature：功能分支
-  - 基于develop分支的clone。
-  - 对新需求新功能开发完毕后，合并到develop分支（未正式上线不推送远程）
-  - 多功能分支，推送后可选删除。
+# 推送 -f用力推
+git push origin master
 
-- release：测试分支
-  - 基于feature分支的clone。
-  - 写测试代码，发先bug后即在本分支修复。
-  - 修复完毕后，合并到develop/master分支并推送，打tag。
-  - 可选删除。
+# 查看远程仓库列表
+git remote -v
 
-- hotfix：补丁分支
-  - 基于master分支的clone。
-  - 修复完毕后合并到develop/master分支并推送，打tag。
-  - 可选删除分支，所有hotfix修改都会进入下一个release。
-
-~~~shell
-# localdev:本地分支 develop:远程开发分支 master：远程主分支
-# clone远程分支develop
-git checkout -b localdev origin/develop
-
-# 添加
-git add 文件
-# 提交
-git commit -m'注释'
-
-# 切换分支
-git checkout develop
-# 合并分支
-git merge --no-ff -m 'xxx' localdev
-
-# 比较分支
-git diff develop localdev
-# 工作区与当前本地分支比较
-git diff HEAD
-# 暂存区与当前本地分支比较
-git diff --cached
-
-# 推送远程
-git push origin develop
+# 拉取远程仓库代码，拉取到本地origin，可用作查看远程仓库是否更新，diff比较
+git fetch origin
 ~~~
 
 ### 分支操作
@@ -102,7 +127,7 @@ git push origin develop
 ~~~shell
 # 查看本地分支
 git branch
-# 查看本地和远程分支，v详细
+# 查看本地和远程分支，a含远程分支，v详细
 git branch -av
 
 # 创建分支，可以是分支名或tag或commit hash
@@ -115,15 +140,18 @@ git push origin --delete xxx
 
 # 切换分支
 git checkout xxx
+
+# 合并分支，一般管理员将成员的开发功能分支进行合并 --no-ff表示保留其合并分支的commit记录
+git merge --no-ff -m 'xxx' develop_liu
 ~~~
 
 ### 里程碑
 
 ~~~shell
 # 添加tag
-git tag v1.0.0.0
+git tag V1.0.0.0
 # 添加带注释的tag
-git tag -a v1.0.0.1 -m 'release v1.0.0.1 version'
+git tag -a V1.0.0.1 -m 'release V1.0.0.1 version'
 
 # 推送某个tag到远程
 git push origin v1.0.0.0
@@ -131,35 +159,16 @@ git push origin v1.0.0.0
 git push origin --tags
 
 # 查看本地某个tag及注释
-git show v1.0.0.0
+git show V1.0.0.0
 # 查看本地tag
 git tag
 # 查看所有远程tag
 git ls-remote --tags origin
 
 # 删除本地tag
-git tag -d v1.0.0.1
+git tag -d V1.0.0.1
 # 删除远程tag
-git push origin :refs/tags/v1.0.0.1
-~~~
-
-### 远程操作
-
-~~~shell
-# 拉取到本地仓库
-git pull
-
-# 推送 -f用力推
-git push
-
-# 查看远程仓库列表
-git remote -v
-
-# 添加远程仓库origin
-git remote add origin ssh://git@101.52.4.78:8022/root/plctake.git
-
-# 拉取远程仓库代码，拉取到本地origin，可用作查看远程仓库是否更新，diff比较
-git fetch origin
+git push origin :refs/tags/V1.0.0.1
 ~~~
 
 ### 解决冲突
@@ -170,6 +179,9 @@ git reset --soft xxx
 
 # 查看远程是否更新
 git fetch origin
+
+# 比较分支差异(本地分支develop与远程develop分支比较)
+git diff develop origin/develop
 
 # 暂存本地修改
 git stash
@@ -196,6 +208,13 @@ git log --pretty=oneline
 
 # 查看工作区/暂存区
 git status
+
+# 比较分支
+git diff develop localdev
+# 工作区与当前本地分支比较
+git diff HEAD
+# 暂存区与当前本地分支比较
+git diff --cached
 
 # 移出暂存区（到工作区），相当于对add的撤回
 git restore --staged xxx
@@ -241,15 +260,47 @@ git rebase -i xxx xxx
 git rebase --abort
 ~~~
 
-### 参考资料
-
-https://www.cnblogs.com/tomakemyself/p/13829985.html
-
-https://developer.aliyun.com/article/785435?spm=a2c6h.17698244.wenzhang.1.1d323bbbVrJPGl
-
-https://developer.aliyun.com/article/767181?spm=a2c6h.17698244.wenzhang.7.1d323bbb6gFyQI
-
 ### Git-Flow实践
+
+#### 概述
+
+Git-Flow定义了一个项目发布的分支模型，为管理多人协作、多版本发布提供了一套操作标准。
+
+~~~shell
+V1.0.0.0
+# master主版本号 产品方向，架构升级
+# 次版本号 一个迭代周期，若干个功能升级
+# 功能号（PR） 一个pull request累计一个
+# 热修复号 测试或上线bug的修复，修复一次累计一个
+~~~
+
+- master：主分支
+  - 对外发布
+  - 受保护分支（只读，只能从其他分支（release/hotfix）合并）
+  - 打标签（方便追溯）
+
+- develop：开发分支
+  - 基于master分支的clone。
+  - 受保护分支（只读，只能从其他分支合并）
+    - feature合并到develop
+    - develop拉取release分支，提测
+    - release/hotfix上线完毕，合并到develop并推送远程
+
+- feature：功能分支
+  - 基于develop分支的clone。
+  - 对新需求新功能开发完毕后，合并到develop分支（未正式上线不推送远程）
+  - 多功能分支，推送后可选删除。
+
+- release：测试分支
+  - 基于feature分支的clone。
+  - 写测试代码，发先bug后即在本分支修复。
+  - 修复完毕后，合并到develop/master分支并推送，打tag。
+  - 可选删除。
+
+- hotfix：补丁分支
+  - 基于master分支的clone。
+  - 修复完毕后合并到develop/master分支并推送，打tag。
+  - 可选删除分支，所有hotfix修改都会进入下一个release。
 
 #### 准备工作
 
@@ -347,7 +398,7 @@ git push origin 0.1.0.DEVELOP
 
 #### 解决冲突
 
-当本地版本库不是最新时提交，就会产出冲突。
+当本地本库不是最新时提交，就会产出冲突。
 
 ~~~shell
 # 情况一：develop_liu本地分支与远程分支冲突，公司电脑忘提交远程，在家又写了些代码提交远程，回到公司继续提交时就会冲突。
@@ -359,6 +410,8 @@ git push origin 0.1.0.DEVELOP
 git fetch origin
 # 好做分支比较
 git diff develop_liu origin/develop_liu
+# 也可通过status查看是否是最新，在切换分支可会有提示
+git status
 
 # 暂存本地修改
 git stash
@@ -374,7 +427,7 @@ git stash apply stash@{1}
 # 可以看到，冲突文件为待add的
 git status
 
-# 冲突部分代码通常会被>>>>><<<<<包裹
+# 冲突部分代码通常会被>>>>>xxx<<<<<包裹
 # 解决冲突后即可add、commit、“完成功能”
 ~~~
 
@@ -396,27 +449,27 @@ git commit feature-1-test.text -m'add feature-1-test'
 git commit feature-2-test.text -m'add feature-2-test'
 git commit feature-1.text -m'add feature-1.text'
 
-# 提交到远程，进行PR，合并到release，打tag：0.1.0.RELEASE，有bug则打tag：0.1.0.1.RELEASE
+# 提交到远程，进行PR，合并到release，打tag：V0.1.0.RELEASE，有bug则打tag：V0.1.0.1.RELEASE
 git push origin/release_liu
 # PR后，切换到release打tag
-git tag -a 0.1.0.1.RELEASE -m 'add 0.1.0.1.RELEASE'
+git tag -a V0.1.0.1.RELEASE -m 'add V0.1.0.1.RELEASE'
 # 提交到远程版本
-git push origin 0.1.0.1.RELEASE
+git push origin V0.1.0.1.RELEASE
 ~~~
 
 #### 热修复
 
 ~~~shell
-# 如有修复bug，需再PR，合并到develop，打tag：0.1.0.1.DEVELOP
+# 如有修复bug，需再PR，合并到develop，打tag：V0.1.0.1.DEVELOP
 # 管理员通过cherry-pick，挑选修复bug部分commit的代码进行合并到develop分支
 # 拉取release
 git checkout -b release_hotfix_liu origin/release
 # 提交到远程,进行PR，合并到develop
 git push origin release_hotfix_liu
 # PR后，切换到develop打tag
-git tag -a 0.1.0.1.DEVELOP -m 'add 0.1.0.1.DEVELOP'
+git tag -a V0.1.0.1.DEVELOP -m 'add V0.1.0.1.DEVELOP'
 # 提交到远程版本
-git push origin 0.1.0.1.DEVELOP
+git push origin V0.1.0.1.DEVELOP
 ~~~
 
 #### cherry-pick
@@ -442,4 +495,12 @@ git cherry-pick --quit
 # 如果不想挑选合并来，可终止操作，恢复到cherry-pick之前
 git cherry-pick --abort
 ~~~
+
+### 参考资料
+
+https://www.cnblogs.com/tomakemyself/p/13829985.html
+
+https://developer.aliyun.com/article/785435?spm=a2c6h.17698244.wenzhang.1.1d323bbbVrJPGl
+
+https://developer.aliyun.com/article/767181?spm=a2c6h.17698244.wenzhang.7.1d323bbb6gFyQI
 
