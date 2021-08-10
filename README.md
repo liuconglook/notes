@@ -1,6 +1,8 @@
-# Headline
+# Notes
 
-> An awesome project.
+学习笔记网址：https://liuconglook.github.io/notes/#/
 
-hello
+### 已更新笔记
+
+- Git
 
