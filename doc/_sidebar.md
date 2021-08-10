@@ -1,1 +1,1 @@
-* [Git](README)
+* [Git](Git)
