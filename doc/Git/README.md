@@ -40,7 +40,7 @@ git --version
 
 ~~~shell
 # 1、生成key
-ssh-keygen -t rsa -b 4096 -C "liuconglook@gmail.com" -f "github_id_rsa"
+ssh-keygen -t rsa -b 4096 -C "liu@gmail.com" -f "github_id_rsa"
 # 2、将生成的github_id_rsa和github_id_rsa.pub放入用户下的.ssh目录下
 # 3、将pub公钥内容添加到github。头像=>settings=>SSH and GPG keys=>nwe SSH key
 # 4、验证

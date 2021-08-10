@@ -1,3 +1,4 @@
 * [Home]()
-* [Git](Git)
+* [Git](/Git/)
+* [Mall](/Mall/)
 
