@@ -9,5 +9,5 @@
 * pragmatic knowledge
 
 [GitHub](https://github.com/liuconglook/notes/)
-[Get Started](#Git)
+[Get Started](Git)
 
