@@ -1,1 +1,1 @@
-* [Git](Git)
+- [Git](Git)
