@@ -7,6 +7,7 @@
     <meta name="description" content="Description">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <link rel="stylesheet" href="./css/vue.css">
+	<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk/dist/gitalk.css">
 </head>
 <body>
 <div id="app"></div>
@@ -27,7 +28,13 @@
 			successText: 'Copied'
 		},
 		search: 'auto',
-		ga: 'G-PWS5G3LP6V'
+		ga: 'G-PWS5G3LP6V',
+		count:{
+			countable:true,
+			fontsize:'0.9em',
+			color:'rgb(90,90,90)',
+			language:'chinese'
+		}
     }
 </script>
 <!-- Docsify v4 -->
@@ -36,7 +43,20 @@
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-php.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docsify/lib/docsify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/ga.min.js"></script>
+<script src="https://unpkg.com/docsify-count/dist/countable.js"></script>
+<script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/gitalk.min.js"></script>
+<script src="//cdn.jsdelivr.net/npm/gitalk/dist/gitalk.min.js"></script>
+<script>
+  const gitalk = new Gitalk({
+    clientID: '801bfb923418263efabc',
+    clientSecret: 'd4d237c00e079ab543f6cdc92e2888a871d06af2',
+    repo: 'notes', // 仓库名
+    owner: 'liuconglook', // github名称
+    admin: ['liuconglook@gmail.com'],
+    // facebook-like distraction free mode
+    distractionFreeMode: false
+  })
+</script>
 </body>
 </html>
