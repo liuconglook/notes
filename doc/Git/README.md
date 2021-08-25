@@ -152,7 +152,7 @@ git tag V1.0.0.0
 git tag -a V1.0.0.1 -m 'release V1.0.0.1 version'
 
 # 推送某个tag到远程
-git push origin v1.0.0.0
+git push origin V1.0.0.0
 # 推送所有tag到远程
 git push origin --tags
 
@@ -201,7 +201,7 @@ git commit -m'解决冲突'
 git log -3
 git log --oneline
 git log --oneline --graph # 版本线 --all 表示包含其他分支
-git reflog # 总的提交日志
+git reflog # 带索引的日志
 git log --pretty=oneline
 
 # 查看工作区/暂存区
@@ -314,7 +314,7 @@ V1.0.0.0
 
 - 点击`main`分支选择，搜索或创建`release`
 - 点击`branches`进入分支页面，即可看见编辑、删除按钮。
-- 点击`Settings`=>`Branches`可修改主（默认）分支。
+- 点击`Settings`=>`Branches`可修改主（默认）分支，添加分支保护规则。
 
 初始化版本（tag）
 
@@ -373,14 +373,14 @@ git push origin/develop_liu
 ~~~shell
 # 当所有都提交（commit）到本地版本库后
 # 需提交到对应的远程分支
-git push origin/develop_liu
+git push origin develop_liu
 
 # 进行PR,等待管理员同意后，切换到develop分支，标记版本tag
 git checkout origin/develop
 # 添加本地版本
-git tag -a 0.1.0.DEVELOP -m 'add 0.1.0.DEVELOP'
+git tag -a V0.0.1.DEVELOP -m 'add V0.0.1.DEVELOP'
 # 提交到远程版本
-git push origin 0.1.0.DEVELOP
+git push origin V0.0.1.DEVELOP
 ~~~
 
 #### PR
@@ -408,7 +408,7 @@ git push origin 0.1.0.DEVELOP
 git fetch origin
 # 好做分支比较
 git diff develop_liu origin/develop_liu
-# 也可通过status查看是否是最新，在切换分支可会有提示
+# 也可通过status查看是否是最新，在切换分支可会有提示,但仍需要拉取远程进行比较
 git status
 
 # 暂存本地修改
