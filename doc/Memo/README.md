@@ -158,6 +158,39 @@ String.format("T%07d", 1); // T0000001
 @RequestParam(value = "idList[]") Integer[] idList
 ~~~
 
+> Stream
+
+~~~java
+// 遍历
+list.stream().forEach(System.out::print);
+list.stream().forEach(e -> System.out.print(e));
+list.stream().forEach(e -> {System.out.print(e)});
+
+// list转map
+List<JSONObject> list = new ArrayList<>();
+Map<String, String> map = list.stream().collect(Collectors.toMap(e -> e.getString("name"), e -> e.getString("age")));
+
+// 分页
+list.stream().skip((page - 1) * limit).limit(limit).collect(Collectors.toList());
+
+// 条件过滤
+String name = "张三";
+Integer age = 18;
+list.stream().filter(obj -> {
+    Boolean nameIsPass = true;
+    if(!StringUtils.isEmpty(name)) {
+        nameIsPass = obj.getName().equals(name);
+    }
+    Boolean ageIsPass = true;
+    if(age != null) {
+        ageIsPass = obj.getAge() == age;
+    }
+    return nameIsPass && ageIsPass;
+});
+~~~
+
+
+
 ### MSQL
 
 #### 常用函数
