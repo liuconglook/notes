@@ -160,22 +160,24 @@ String.format("T%07d", 1); // T0000001
 
 #### Stream
 
+参考：https://xie.infoq.cn/article/50324deb1efcf3845113e341f
+
 > 使用
 
 ~~~java
-// 遍历
+// 1、遍历
 list.stream().forEach(System.out::print);
 list.stream().forEach(e -> System.out.print(e));
 list.stream().forEach(e -> {System.out.print(e)});
 
-// list转map，使用toConcurrentMap，则返回安全的CurrentMap
+// 2、list转map，使用toConcurrentMap，则返回安全的CurrentMap
 List<JSONObject> list = new ArrayList<>();
 Map<String, String> map = list.stream().collect(Collectors.toMap(e -> e.getString("name"), e -> e.getString("age")));
 
-// 分页
+// 3、分页
 list.stream().skip((page - 1) * limit).limit(limit).collect(Collectors.toList());
 
-// 条件过滤
+// 4、条件过滤
 String name = "张三";
 Integer age = 18;
 list.stream().filter(obj -> {
@@ -190,7 +192,7 @@ list.stream().filter(obj -> {
     return nameIsPass && ageIsPass;
 });
 
-// 分组，使用groupingByConcurrent，则返回安全的CurrentMap
+// 5、分组，使用groupingByConcurrent，则返回安全的CurrentMap
 Map<String, List<JSONObject>> map = list.stream().collect(
     Collectors.groupingBy(
         e -> e.getString("name"), 
@@ -201,14 +203,30 @@ Map<String, List<JSONObject>> map = list.stream().collect(
  * 李四:[{"name":"李四","age":20}, {"name":"李四","age":22}]
  */
 
+// 6、去重
+ArrayList<JSONObject> list3 = list.stream().collect(
+                Collectors.collectingAndThen(
+                        Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(e -> e.getString("name")))),
+                        ArrayList::new)
+);
 
+// 7、求和 0为起始值
+Integer sum = students.stream().map(Student::getAge).reduce(0, (a, b) -> a + b);
 
+// 8、最大/最小值
+Optional<Student> studentMax = students.stream().collect(Collectors.maxBy(Comparator.comparing(Student::getAge)));
+        studentMax.ifPresent(System.out::println);
+        Optional<Student> studentMin = students.stream().collect(Collectors.minBy(Comparator.comparing(Student::getAge)));
+        studentMin.ifPresent(System.out::println);
 ~~~
 
 > 技巧
 
 ~~~java
-Function.identity(); // 返回输入参数本身
+// 1、stream返回的对象通常是Optional的，也就是可以为null的，通过isPresent()判断是否为空
+
+// 2、返回输入参数本身
+Function.identity();
 // 源码
 static <T> Function<T, T> identity() {
     return t -> t;
@@ -221,13 +239,13 @@ map.forEach((key, valve) -> System.out.println(key + ":" + valve));
 //1:1
 //2:2
 //3:3
+
+// 3、遍历时删除元素
+// 方式1：使用迭代器删除iterator.remove();
+// 方式2：java8提供的removeIf
+list.removeIf(e -> e.getAge() == 20 || e.getAge() == 18);
+
 ~~~
-
-
-
-
-
-
 
 ### MSQL
 
