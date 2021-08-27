@@ -8,5 +8,7 @@
 
 - Git（Git实战笔记）
 - Mall（SpringBoot练手项目）
-- Memo（随笔）
+- My Center
+  - Memo（随笔）
+  - Bookrack
 
