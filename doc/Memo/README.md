@@ -158,7 +158,9 @@ String.format("T%07d", 1); // T0000001
 @RequestParam(value = "idList[]") Integer[] idList
 ~~~
 
-> Stream
+#### Stream
+
+> 使用
 
 ~~~java
 // 遍历
@@ -166,7 +168,7 @@ list.stream().forEach(System.out::print);
 list.stream().forEach(e -> System.out.print(e));
 list.stream().forEach(e -> {System.out.print(e)});
 
-// list转map
+// list转map，使用toConcurrentMap，则返回安全的CurrentMap
 List<JSONObject> list = new ArrayList<>();
 Map<String, String> map = list.stream().collect(Collectors.toMap(e -> e.getString("name"), e -> e.getString("age")));
 
@@ -187,7 +189,43 @@ list.stream().filter(obj -> {
     }
     return nameIsPass && ageIsPass;
 });
+
+// 分组，使用groupingByConcurrent，则返回安全的CurrentMap
+Map<String, List<JSONObject>> map = list.stream().collect(
+    Collectors.groupingBy(
+        e -> e.getString("name"), 
+    	Collectors.collectingAndThen(Collectors.toList(), es -> es)));
+// 结果
+/**
+ * 张三:[{"name":"张三","age":18}]
+ * 李四:[{"name":"李四","age":20}, {"name":"李四","age":22}]
+ */
+
+
+
 ~~~
+
+> 技巧
+
+~~~java
+Function.identity(); // 返回输入参数本身
+// 源码
+static <T> Function<T, T> identity() {
+    return t -> t;
+}
+// 使用案例
+List<String> list = Arrays.asList(new String[]{"1","2","3"});
+Map<String, String> map = list.stream().collect(Collectors.toMap(Function.identity(), Function.identity()));
+map.forEach((key, valve) -> System.out.println(key + ":" + valve));
+// 结果
+//1:1
+//2:2
+//3:3
+~~~
+
+
+
+
 
 
 
