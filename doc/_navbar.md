@@ -1,5 +1,7 @@
 * [Home]()
 * [Git](/Git/)
 * [Mall](/Mall/)
-* [Memo](/Memo/)
+* My Center
+  * [Memo](/Memo/)
+  * [Bookrack](/Bookrack/)
 

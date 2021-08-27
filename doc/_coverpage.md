@@ -8,6 +8,5 @@
 * a clear study path
 * pragmatic knowledge
 
-[GitHub](https://github.com/liuconglook/notes/)
-[Get Started](/Git/)
+[GitHub](https://github.com/liuconglook/notes/) [Gitee](https://cleve.gitee.io/notes/) [Get Started](/Git/)
 
