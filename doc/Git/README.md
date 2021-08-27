@@ -425,7 +425,7 @@ git stash apply stash@{1}
 # 可以看到，冲突文件为待add的
 git status
 
-# 冲突部分代码通常会被>>>>>xxx<<<<<包裹
+# 冲突部分代码通常会被<<<<<<< Updated upstream xxx >>>>>>> Stashed changes包裹
 # 解决冲突后即可add、commit、“完成功能”
 ~~~
 
