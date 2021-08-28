@@ -202,6 +202,8 @@ Map<String, List<JSONObject>> map = list.stream().collect(
  * 张三:[{"name":"张三","age":18}]
  * 李四:[{"name":"李四","age":20}, {"name":"李四","age":22}]
  */
+// 分组统计
+Map<String, Long> map = list.stream().collect(Collectors.groupingBy(e -> e.getString("name"), Collectors.counting()));
 
 // 6、去重
 ArrayList<JSONObject> list3 = list.stream().collect(
@@ -211,13 +213,36 @@ ArrayList<JSONObject> list3 = list.stream().collect(
 );
 
 // 7、求和 0为起始值
+// 方式1
 Integer sum = students.stream().map(Student::getAge).reduce(0, (a, b) -> a + b);
+System.out.println(sum3);
+// 方式2
+Optional<Integer> sum2 = students.stream().map(Student::getAge).collect(Collectors.reducing(Integer::sum));
+sum2.ifPresent(System.out::println);
+// 方式3
+Integer sum3 = students.stream().map(Student::getAge).collect(Collectors.reducing(0, Integer::sum));
+System.out.println(sum3);
+// 方式4
+Integer sum4 = students.stream().collect(Collectors.reducing(0, Student::getAge, Integer::sum));
+System.out.println(sum4);
 
 // 8、最大/最小值
 Optional<Student> studentMax = students.stream().collect(Collectors.maxBy(Comparator.comparing(Student::getAge)));
         studentMax.ifPresent(System.out::println);
         Optional<Student> studentMin = students.stream().collect(Collectors.minBy(Comparator.comparing(Student::getAge)));
         studentMin.ifPresent(System.out::println);
+
+// 9、joining 拼接字符串
+// 可选参数：分隔符、前缀、后缀
+String str = students.stream().map(Student::getName).collect(Collectors.joining(","));
+System.out.println(str);
+
+// 10、mapping 聚合
+List<Integer> ages = students.stream().collect(Collectors.mapping(Student::getAge, Collectors.toList()));
+System.out.println(Arrays.toString(ages.toArray()));
+
+
+
 ~~~
 
 > 技巧
@@ -247,6 +272,20 @@ list.removeIf(e -> e.getAge() == 20 || e.getAge() == 18);
 
 ~~~
 
+> 总结
+
+- 聚合后操作（类似SQL中的HAVING）
+  - reducing
+    - 比如求和，先聚合，再求和。
+
+- 操作后聚合（类似SQL中的WHERE）
+  - mapping
+    - 比如收集age，先选择收集age，再toList。
+
+
+
+
+
 ### MSQL
 
 #### 常用函数
@@ -257,6 +296,9 @@ CONCAT('','','')
 
 -- 按,拼接字符
 CONCAT_WS(',','','')
+
+-- 转小写字母
+LOWER(str)
 
 -- 三元运算符
 IF(IFNULL(str),0,1)
@@ -571,17 +613,6 @@ http://localhost:8089/hwkj/ws/userName2
 
 ### 随笔
 
-> 命名
-
-- 类（名词）
-
-- 函数（动词）
-  - 只做一件事。
-  - 参数少，函数简短。
-- 注释
-  - 少写注释。
-  - 当需要用注释来解释一段代码时，应审视这段代码是否应该重写。
-
 #### 缓存
 
 缓存：一般指内存，读写速度快。或用户本地缓存，不需要存储到服务器。
@@ -682,3 +713,38 @@ TDD是专业人士的选择。它是一项能够提升代码确定性、给程�
 坑法则（The Rule of Holes）：如果你掉进了坑里，别挖。
 
 选择那些你在危机时刻依然会遵循的纪律原则，并且在所有工作中都遵守这些纪律。遵守这些纪律原则是避免陷入危机的最好途径。
+
+#### 代码整洁之道
+
+> 整洁的定义
+
+- 只做好一件事（职责单一）
+  - 模块、类、函数都专注于一事，尽量少的依赖关系，避免代码污染。
+
+- 简单明了（可读性高）
+  - 意图明显，无可挑剔，找不出bug，最优性能。
+  - 易读的代码往往也容易写。
+- 有意义的命名（字面编程）
+  - 让代码优雅起来，如同散文诗一般。
+  - 体现系统中的全部设计理念。
+- 能通过所有测试（测试驱动开发）
+  - 方便改进脏代码
+- 没有重复代码（重构）
+  - 消除重复，尽力清晰地表达，而不是一直堆积。
+- 小规模抽象（低耦合高内聚）
+  - 提早构造抽象，为修改留有余地。
+  - 提醒真正要做的事，避免随意实现集合行为。
+
+> 命名
+
+需多花点时间命名，或有意识地多重命名。
+
+- 类（名词）
+
+- 函数（动词）
+  - 只做一件事。
+  - 参数少，函数简短。
+- 注释
+  - 少写注释。
+  - 当需要用注释来解释一段代码时，应审视这段代码是否应该重写。
+
