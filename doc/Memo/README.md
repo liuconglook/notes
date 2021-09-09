@@ -1091,14 +1091,15 @@ TDD是专业人士的选择。它是一项能够提升代码确定性、给程�
 - 最好的架构、需求和设计出自组织的团队。
 - 每隔一段时间，团队会在如何才能更有效地工作方面进行反省，然后相应地对自己的行为进行调整。
 
-> 极限编程
+> 敏捷方法
 
-- 敏捷方法
-  - SCRUM
-  - Crystal
-  - 特征驱动软件开发（Feature Driven Development，简称FDD）
-  - 自适应软件开发（Adaptive Software Development，简称ADP）
-  - 极限编程（eXtreme Programming, 简称XP）
+- SCRUM
+- Crystal
+- 特征驱动软件开发（Feature Driven Development，简称FDD）
+- 自适应软件开发（Adaptive Software Development，简称ADP）
+- 极限编程（eXtreme Programming, 简称XP）
+
+> 极限编程
 
 极限编程（eXtreme Programming, 简称XP）是敏捷方法中最著名的一个。
 
