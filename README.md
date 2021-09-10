@@ -12,6 +12,8 @@
   - MySQL
   - Redis
   - MongoDB
+- GeekTime
+  * DesignMode
 - My Center
   - Memo（随笔）
   - Bookrack
