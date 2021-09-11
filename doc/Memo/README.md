@@ -282,7 +282,203 @@ list.removeIf(e -> e.getAge() == 20 || e.getAge() == 18);
   - mapping
     - 比如收集age，先选择收集age，再toList。
 
+#### Enum
 
+> mysql enum
+
+~~~sql
+-- 存储 java enum 的 name 值
+`status` enum('PENDING','APPROVED','REJECTED') NOT NULL COMMENT '状态：PENDING-审核中、APPROVED-已审核、REJECTED-已退回',
+
+-- 存储 java enum 的 value 值
+`status` int NOT NULL COMMENT '状态：0-审核中、1-已审核、2-已退回',
+~~~
+
+> java enum
+
+~~~java
+// 配合mysql enum使用
+public enum ReviewStatus {
+    PENDING("审核中"),
+    APPROVED("已审核"),
+    REJECTED("已退回");
+    
+    private String status;
+    
+    ReviewStatus(String status) {
+        this.status = status;
+    }
+    
+    public String getStatus() {
+        return this.status;
+    }
+}
+// 如需存储数值value，需编写枚举转换器
+public enum ReviewStatus {
+    PENDING(0, "审核中"),
+    APPROVED(1, "已审核"),
+    REJECTED(2, "已退回");
+    
+    private int value;
+    private String status;
+    
+    ReviewStatus(int value, String status) {
+        this.value = value;
+        this.status = status;
+    }
+    
+    public int getValue() {
+        return this.value;
+    }
+    
+    public String getStatus() {
+        return this.status;
+    }
+}
+~~~
+
+> mybatis 枚举转换器
+
+~~~java
+public class Article {
+    // Other Field...
+	private ReviewStatus status;
+    // Getter/Setter...
+}
+// article.setStatus(ReviewStatus.REJECTED);
+~~~
+
+- `org.apache.ibatis.type.EnumTypeHandler`（默认）
+  - 存储枚举name值。
+- `org.apache.ibatis.type.EnumOrdinalTypeHandler`
+  - 按枚举顺序，存储枚举的下标（从0开始）。
+- 自定义枚举转换器
+  - 继承`org.apache.ibatis.type.BaseTypeHandler`
+
+~~~java
+public class ReviewStatusHandler extends BaseTypeHandler<ReviewStatus> {
+    /**
+     * 设置配置文件设置的转换类以及枚举类内容，供其他方法更便捷高效的实现
+     *
+     * @param type 配置文件中设置的转换类
+     */
+    public ReviewStatusHandler(Class<ReviewStatus> type) {
+        if (type == null)
+            throw new IllegalArgumentException("Type argument cannot be null");
+        this.type = type;
+        this.enums = type.getEnumConstants();
+        if (this.enums == null)
+            throw new IllegalArgumentException(type.getSimpleName()
+                    + " does not represent an enum type.");
+    }
+
+    // 预编译语句参数，java类型转数据库类型
+    @Override
+    public void setNonNullParameter(PreparedStatement ps, int i, ReviewStatus parameter, JdbcType jdbcType) throws SQLException {
+        ps.setInt(i, parameter.getValue());
+    }
+
+    // 结果集，根据 字段名 数据库类型转java类型
+    @Override
+    public ReviewStatus getNullableResult(ResultSet rs, String columnName) 
+        throws SQLException {
+        // 根据 字段名 获取审核状态int类型
+        int value = rs.getInt(columnName);
+        if (rs.wasNull()) {
+            return null;
+        } else {
+            // 返回value对应枚举
+            return locateEnum(value);
+        }
+    }
+
+    // 结果集，数据库类型转java类型
+    @Override
+    public ReviewStatus getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
+        // 根据 索引 获取审核状态int类型
+        int value = rs.getInt(columnIndex);
+        if (rs.wasNull()) {
+            return null;
+        } else {
+            // 返回value对应枚举
+            return locateEnum(value);
+        }
+    }
+    
+    // 存储过程，数据库类型转java类型
+    @Override
+    public ReviewStatus getNullableResult(CallableStatement cs, int columnIndex) 
+        throws SQLException {
+        // 根据 索引 获取审核状态int类型
+        int value = cs.getInt(columnIndex);
+        if (cs.wasNull()) {
+            return null;
+        } else {
+            // 返回value对应枚举
+            return locateEnum(value);
+        }
+    }
+
+
+    /**
+     * 根据Value获取对应的枚举
+     * @param value 
+     * @return 枚举
+     */
+    private ReviewStatus locateEnum(int value) {
+        for (ReviewStatus status : ReviewStatus.values()) {
+            if (status.getValue() == value) {
+                return status;
+            }
+        }
+        throw new IllegalArgumentException("未知的枚举类型：" + value);
+    }
+}
+~~~
+
+~~~xml
+<!-- 方式一：mapper配置（局部） -->
+...
+<resultMap id="BaseResultMap" type="com.belean.project.entity.Article">
+    ...
+    <result column="status" property="status" 
+            typeHandler="com.belean.project.entity.enum.ReviewStatusHandler"/>
+</resultMap>
+...
+~~~
+
+~~~yml
+# 方式二：application.yml配置（全局）
+mybatis:
+	type-handlers-package: com.belean.project.entity.enum
+~~~
+
+~~~xml
+<!-- 方式三：不使用 -->
+<insert id="add" parameterType="com.belean.project.entity.Article">
+    INSERT INTO article(status) VALUES(#{article.status.value})
+</insert>
+~~~
+
+~~~java
+// 方式四：手动设置Getter/Setter
+public class Article {
+	private ReviewStatus status;
+    
+    public int getStatus() {
+        return status.getValue();
+    }
+    
+    public void setStatus(int value) {
+        for (ReviewStatus status : ReviewStatus.values()) {
+            if (status.getValue() == value) {
+                this.status = status;
+                break;
+            }
+        }
+    }
+}
+~~~
 
 
 
@@ -1189,11 +1385,65 @@ TDD是专业人士的选择。它是一项能够提升代码确定性、给程�
   - 考虑能够工作的最简单的事情。
     - 尽可能寻找能实现当前用户素材的最简单设计。
   - 你将不需要它。
+    - 刚好解决就好，除非有必要，否则不必为未来提前买单。
   - 一次，并且只有一次。
+    - 消除重复代码。
+
+- 重构
+  - 重构就是在不改变代码行为的前提下，对其进行一系列小的改造。
+  - 每次细微改造之后，通过运行单元测试以确保改造没有造成任何破坏，然后再去做下一次改造。
+  - 每个改造都微不足道，但所有的这些改造叠加在一起，就形成来对系统设计和架构显著的改进。
+  - 重构是我们每隔一个小时或者半个小时就要去做的事情。
+  - 通过重构，我们可用持续地保持尽可能干净、简单并且具有表现力的代码。
+
+- 隐喻
+  - 隐喻（metaphore）是系统的未来景图。通常可用归结为一个名字系统，这些名字提供了一个系统组成元素的词汇表，并且有助于定义它们之间关系。
+  - 例如：以每秒60个字符的速度将文本输出到屏幕的系统。程序将产生的文本放到一个缓冲区，当满了后，则放入磁盘，当缓冲区快空时，再切换回来。用卡车托运垃圾来比喻，缓冲区就是小卡车，屏幕是垃圾场，程序是垃圾制造者。
+  - 例如：分析网络流量的系统。每30分钟，系统会轮询许多网络适配器，并从中获取监控数据。每个网络适配器提供一小块由几个单独的变量组成的数据，我们这些数据块为“面包切片”，分析程序“烤制”这些切片，因被称为“烤面包机”，而数据块中的单个变量被称为“面包屑”。
+
+> 计划
+
+对极限编程中计划游戏部分的描述。
+
+可衡量的计划，是用数字说话。
+
+- 用户素材
+  - 通过“点数”来确定实现用户素材的相对时间。
+    - 例如：实现8个点的用户素材所需的时间是4个点的用户素材的两倍。
+  - 分解大的素材，合并小的素材。
+    - 分解和合并用户素材后，应重新估算点数，而不是简单的加减。
+  - 确认速度因子，比如2天实现一个素材点，事先可先给出一个猜测值。
+    - 随着项目的进展，对于速度的度量会越来越准。
+- 发布计划
+  - 与客户确认发布时间，通常2~4个月后。
+  - 让业务人员来选定哪些会给他们带来最大利益的素材。
+    - 挑选本次发布中它们想要实现的素材，并大致确定这些素材的实现顺序。
+    - 且不能选择与当前开发速度不符的更多素材。
+    - 当速度变得更准确一点时，可用再对发布计划进行调整。
+- 迭代计划
+  - 与客户决定迭代规模，一般需两周。
+  - 客户选择本次迭代中实现的素材。
+  - 开发人员可以采用技术意义的顺序来串行地实现，或分摊素材，进行并行开发。
+  - 一旦迭代开始，客户就不能再改变迭代期内需要实现的素材。
+  - 即使没有完成所有的用户素材，迭代也要在先前指定的日期结束。
+    - 根据首次迭代完成的点数，确认下次迭代计划的点数。
+- 任务计划
+  - 新的迭代开始，开发人员把素材分解成开发任务。
+    - 一个任务是一个开发人员能够在4~16小时之内实现的一些功能。
+  - 开发人员签订一项任务的时候，也要对任务进行估算。
+    - 这样每个人就知道在最近一次的迭代中所完成的任务点数，可作为下次迭代的个人预算。
+  - 分发所有任务，或用完所有人预算任务的点数为止。
+  - 迭代的中点，需要开一次会，重新调整任务（增加素材或去除优先级较低的素材），以便完成素材，而不是任务。
+- 迭代
+  - 每次迭代的结束，给客户演示当前可运行的程序。
+  - 要求客户对项目程序的外观、感觉和性能进行评价。
+  - 客户会以新的用户素材的方式提供反馈。
 
 
 
-39
+
+
+47
 
 
 
