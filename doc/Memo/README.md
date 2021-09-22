@@ -135,6 +135,39 @@ window.DateFormat = function (date, fmt) { //author: meizz
 }
 ~~~
 
+#### npm
+
+~~~shell
+# 安装windows编译环境
+npm install --global --production windows-build-tools
+npm install -g node-gyp
+npm install -g node-sass --save-dev
+
+# 编译并安装程序
+npm install
+# Failed at the node-sass@4.12.0 postinstall script.
+# 查看node与node-sass版本对应关系：https://www.npmjs.com/package/node-sass
+# 我node:v14.15.4，所有需要node-sass:v4.14+
+# 查看所有版本
+npm view node-sass versions
+# 最新版
+npm view node-sass version
+# 查看本地安装的版本
+npm ls node-sass
+# 查看全局安装的版本
+npm ls node-sass -g
+
+npm uninstall node-sass
+npm cache clean --force
+npm install node-sass@4.14.1
+npm install
+
+# 运行
+npm run serve
+~~~
+
+
+
 ### JAVA
 
 ~~~java
@@ -1466,6 +1499,29 @@ PrimeGenerator
 >编程实践
 
 保龄球比赛（66）
+
+- 积分规则
+  - 共十轮，每轮10个球瓶，有两次投球机会。
+  - 每轮的第一次投球，如果击倒10个球瓶，记“全中”。
+    - 10分+之后两次投球得分
+  - 每轮的第二次投球，如果击倒全部球瓶，记“补中”。
+    - 下一轮的第一次击倒的球瓶数+10，作为本轮“补中”得分。
+  - 如果直至第二次投球结束，还未击倒全部球瓶，则算“失误”。
+    - 两次投球击倒的球瓶数量和作为本轮”失误“得分。
+
+- 简单理解
+  - 累计每次投球数，如果上一轮是”全中“或“补中”，则本轮第一次投球数得分翻倍。
+
+> 敏捷设计
+
+- 拙劣设计的症状
+  - 僵化性（Rigidity）：设计难以改变。
+  - 脆弱性（Fragility）：设计易于遭到破坏。
+  - 牢固性（Immobility）：设计难以重用。
+  - 粘滞性（Viscosity）：难以做正确的事情。
+  - 不必要的复杂性（Needless Complexity）：过分设计。
+  - 不必要的重复（Needless Repetition）：滥用鼠标。
+  - 晦涩性 （Opacity）：混乱的表达。
 
 
 
