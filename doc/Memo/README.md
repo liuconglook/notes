@@ -84,6 +84,12 @@ upload.render({
 });
 let formData = new FormData();
 formData.append("file", $("#uploadFile").next()[0].files[0]);
+$.ajax({
+    processData: false,
+    contentType: false,
+    data: formData
+});
+@RequestParam(value = "file", required = false) MultipartFile file
 ~~~
 
 ### JS
@@ -156,6 +162,8 @@ npm view node-sass version
 npm ls node-sass
 # 查看全局安装的版本
 npm ls node-sass -g
+# 查看更多信息
+npm info node-sass
 
 npm uninstall node-sass
 npm cache clean --force
@@ -1516,18 +1524,47 @@ PrimeGenerator
 
 - 拙劣设计的症状
   - 僵化性（Rigidity）：设计难以改变。
+    - 因为每个改动都会迫使许多对系统其他部分的其他改动。
+    - 如果单一的改动会导致依赖关系的模块中的连锁改动，那么设计就是僵化的。
   - 脆弱性（Fragility）：设计易于遭到破坏。
+    - 在进行一个改动时，程序的许多地方就可能出现问题。
   - 牢固性（Immobility）：设计难以重用。
-  - 粘滞性（Viscosity）：难以做正确的事情。
+    - 系统中包含了其他系统有用的部分，但是要把这些部分从系统中分离出来所需要的努力和风险是巨大的。
+  - 粘滞性（Viscosity）：做正确的事情比做错误的事情要困难。
+    - 当那些可以保持系统设计的方法比那些生硬手法更难应用时，就表明设计具有高的粘滞性。
   - 不必要的复杂性（Needless Complexity）：过分设计。
-  - 不必要的重复（Needless Repetition）：滥用鼠标。
-  - 晦涩性 （Opacity）：混乱的表达。
+    - 如果设计中包含当前没有用的组成部分，它就含有不必要的复杂性。
+  - 不必要的重复（Needless Repetition）：设计中包含重复的结构，而该重复的结构本可以使用单一的抽象进行统一。
+    - 你永远也不知道这块代码最初编写在哪，又被复制了多少次，一旦这块代码出了问题就得修改多处。
+  - 晦涩性 （Opacity）：模块难以理解。
+    - 代码应用清晰、富有表现力的方式编写。
+
+- SOLID原则
+  - 单一职责原则（The Single Responsiblity Principle，简称SRP）
+    - 就一个类而言，应该仅有一个引起它变化的原因。
+  - 开放-封闭原则（The Open-Close Principle，简称OCP）
+    - 软件实体（类、模块、函数等等）应该是可以扩展的，但是不可修改的。
+  - 里氏替换原则（The Liskov Substitution Principle，简称LSP）
+  - 接口隔离原则（The Interface Segregation Interface，简称ISP）
+  - 依赖倒置原则（The Dependency Inversion Principle，简称DIP）
+
+- 什么是敏捷设计
+  - 设计
+    - 设计是一个抽象的概念。
+      - 它和程序的概括形状、结构以及每一个模块、类和方法的详细形状和结构有关。
+      - 可用使用不同的媒介去描述它。
+      - 最后，源代码就是设计。
+    - 用来描绘源代码的图示只是设计的附属物，而不是设计本身。
+  - 软件的腐化
+    - 在非敏捷环境中，由于需求没有按照初始设计预见的方式进行变化，从而导致了设计的退化。
+    - 敏捷团队依靠变化来获取活力。
+      - 团队几乎不进行预先设计。
+      - 更愿意保持系统设计尽可能的干净、简单，并使用许多单元测试和验收测试作为支援。
+      - 每次迭代结束所生成的系统都具有最合适于那次迭代中需求的设计。
 
 
 
-
-
-103
+115
 
 
 
