@@ -1,5 +1,37 @@
 ## 问题汇总
 
+### Google Hacking
+
+https://zhuanlan.zhihu.com/p/22161675
+
+~~~
+// 默认And，联合几个关键字一起搜索
+keyword keyword2 keyword3
+// 或
+keyword | keyword2 | keyword3
+
+// 指定网站搜索
+site:www.baidu.com
+
+// 指定文件
+fileType:pdf
+
+// 搜索标题 allintitle可混合操作符使用
+intitle:java
+// google搜索的标题
+insubject:java
+// 搜索正文 allintext可混合操作符使用
+intext:优点
+
+// 时间范围
+daterange:
+
+// 指定公司股票市场信息
+stocks:百度
+~~~
+
+
+
 ### LayUI
 
 ~~~js
@@ -1574,33 +1606,96 @@ PrimeGenerator
       - 更愿意保持系统设计尽可能的干净、简单，并使用许多单元测试和验收测试作为支援。
       - 每次迭代结束所生成的系统都具有最合适于那次迭代中需求的设计。
 
-> 薪水支付案例（160）
+> 薪水支付案例（==160==）
 
 - 钟点工
   - 每天提交工作时间卡。
   - 每天8小时，超出部分按1.5倍工资计算。
   - 每周五支付。
+  
 - 月薪
   - 每月的最后一个工作日支付。
+  
 - 酬金
   - 根据销售情况，支付一定数量的酬金。
+  
 - 支付方式
   - 邮寄支付支票
   - 指定银行账户
+  
 - 加入协会
   - 记录每周的服务费用，下个月从薪水中扣除。
+  
 - 薪水支付程序
   - 每个工作日运行一次，为相应的雇员进行支付。
 
-- 增加新雇员addEmp(Integer empId, String name, String address, )
-  - H（钟点工）、S（月薪）、C（月薪+酬金）
-- 
+- 测试用例
+
+  - ~~~shell
+    // 增加雇员 H（钟点工）、S（月薪）、C（月薪+酬金）
+    AddEmp <EmpID> "<name>" "<address>" H <hourly-rate> 
+    AddEmp <EmpID> "<name>" "<address>" S <monthly-rate> 
+    AddEmp <EmpID> "<name>" "<address>" C <monthly-rate> <commission-rate>
+    
+    // 删除雇员
+    DelEmp <EmpID>
+    
+    // 登记时间卡(H钟点工)
+    TimeCard <EmpID> <date> <hours>
+    
+    // 登记销售凭条(C酬金)
+    SalesReceipt <EmpID> <date> <amount>
+    
+    // 登记协会服务费
+    ServiceCharge <memberID> <amount>
+    
+    // 更改雇员明细
+    ChgEmp <EmpID> Name <name> // 雇员名
+    ChgEmp <EmpID> Address <address> // 雇员地址
+    ChgEmp <EmpID> Hourly <hourlyRate> // 每小时报酬
+    ChgEmp <EmpID> Salaried <salary> // 薪水
+    ChgEmp <EmpID> Commissioned <salary> <rate> // 酬金
+    ChgEmp <EmpID> Hold // 支票
+    ChgEmp <EmpID> Direct <bank> <account> // 存款
+    ChgEmp <EmpID> Mail <address> // 邮寄支票
+    ChgEmp <EmpID> Member <memberID> Dues <rate> // 加入协会
+    ChgEmp <EmpID> NoMember <noMember // 退出协会
+    
+    // 每日支付
+    PayDay <date>
+    ~~~
+
+> 设计模式
+
+- 命令（command）模式
+  - 将请求（命令）封装为一个对象，这样可以使用不同的请求参数化其他对象（将不同请求依赖注入到其他对象），并且能够支持请求（命令）的排序执行、记录日志、撤销等（附加控制）功能。
+  - 事务操作：校验命令。
+  - 时间上解耦：校验后，可自动执行。
+  - UNDO：撤销，用栈存储命令的执行，出栈后调用对象的undo(()方法可进行撤销。
+- 主动对象（active object）模式（==168==）
+  - 主动对象模式基于命令模式，是实现多线程控制的一项古老的技术。
+  - ActiveObject维护一个Command对象的链表，当调用run()方法时遍历链表执行命令。
+- 模板方法（template method）模式
+  - 模板方法模式在一个方法中定义一个算法骨架，并将某些步骤推迟到子类中实现。
+  - 模板方法模式可以让子类在不改变算法整体结构的情况下，重新定义算法中的某些步骤。
+  - 将通用的算法放到一个基类（抽象类），子类继承基类来实现变动的步骤。
+- 策略（strategy）模式
+  - 定义一组算法类，将每个算法分别封装起来，让他们可以互相替换。
+  - 策略模式可以使算法的变化独立于使用他们的客户端（指使用算法的代码）。
+  - 编写模板类，利用多态传递接口的实现类，委托接口完成变动的步骤。
+- 门面（facade）模式
+  - 也叫外观模式，它为子系统提供一组统一的接口，定义一组高层接口让子系统更易用。
+  - 为一组具有复杂且全面的接口对象提供一个简单且特定的接口。
+  - 上层的管道策略。
+- 中介（mediator）模式
+  - 
+  - 下层的管道策略。
 
 
 
 
 
-151
+183
 
 
 
