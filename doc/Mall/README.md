@@ -1054,12 +1054,139 @@ spring:
 
 #### RabbitMQ
 
-~~~shell
-rabbitmq-plugins enable rabbitmq_management
+##### Docker安装
 
+~~~shell
+# 1、拉取镜像
+docker pull rabbitmq:management
+
+# 2、运行容器
+# -e RABBITMQ_DEFAULT_USERR=guest -e RABBITMQ_DEFAULT_PASS=guest
+docker run -di --hostname mall --name rabbitmq -p 15672:15672 -p 5672:5672 rabbitmq:management
+
+# 3、登录
+http://127.0.0.1:15672/
+
+# web页面进不去？
+docker exec -it rabbitmq /bin/bash
+# 启动web插件
+rabbitmq-plugins enable rabbitmq_management
+# 退出容器
+exit
+
+
+# 登录不了？可能是guest不允许远程访问
+# 进入容器
+docker exec -it rabbitmq /bin/bash
+
+# 解决方式一（推荐）
+# 创建用户 mall,密码mall
+rabbitmqctl add_user mall mall
+# 设置角色tags，多个用空格隔开
+rabbitmqctl set_user_tags mall administrator
+# 设置用户权限
+rabbitmqctl set_permissions -p "/" mall ".*" ".*" ".*"
+
+# 查看用户列表
 rabbitmqctl list_users
+# 重置密码
 rabbitmqctl change_password guest 'guest'
+
+# 解决方式二
+# 进入容器
+docker exec -it rabbitmq /bin/bash
+# /etc/rabbitmq/conf.d/xxx.conf 设置允许远程访问loopback_users = none
+vim xxx.conf
+# 更新软件包
+apt-get update
+# 安装vim
+apt-get install vim
+
 ~~~
+
+https://www.rabbitmq.com/access-control.html
+
+> 端口
+
+- 5672：rabbitMQ的编程语言客户端连接端口
+- 15672：rabbitMQ管理界面端口
+- 25672：rabbitMQ集群的端口
+
+> Tags
+
+- 超级管理员(administrator)
+  - 可登陆管理控制台，可查看所有的信息，并且可以对用户，策略(policy)进行操作。
+
+- 监控者(monitoring)
+  - 可登陆管理控制台，同时可以查看rabbitmq节点的相关信息(进程数，内存使用情况，磁盘使用情况等)
+
+- 策略制定者(policymaker)
+  - 可登陆管理控制台, 同时可以对policy进行管理。但无法查看节点的相关信息(上图红框标识的部分)。
+
+- 普通管理者(management)
+  - 仅可登陆管理控制台，无法看到节点信息，也无法对策略进行管理。
+
+- 其他
+  - 无法登陆管理控制台，通常就是普通的生产者和消费者。
+
+##### pom.xml
+
+~~~xml
+<!-- 消息队列相关依赖 -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-amqp</artifactId>
+</dependency>
+~~~
+
+##### application.yml
+
+~~~yml
+spring:
+  rabbitmq:
+    host: localhost # rabbitmq的连接地址
+    port: 5672 # rabbitmq的连接端口号
+    virtual-host: /mall # rabbitmq的虚拟host
+    username: mall # rabbitmq的用户名
+    password: mall # rabbitmq的密码
+    publisher-confirms: true #如果对异步消息需要回调必须设置为true
+~~~
+
+##### 报错
+
+> Rabbit health check failed
+
+关闭Actuator监听RabbitMQ
+
+~~~yml
+management:
+  health:
+    rabbit:
+      enabled: false
+~~~
+
+##### 命名
+
+- 命名规范：平台名称/作用/[队列特点/路由特点]/容器名称
+  - mall.order.direct (订单，交换机)
+    - 绑定队列mall.order.cancel（订单取消，队列）
+  - mall.order.direct.ttl（订单，延时，交换机）
+    - 绑定队列mall.order.cancel.ttl（订单取消，延时队列）
+    - 超时自动发送给mall.order.cancel队列，自动取消订单。
+- 容器名称：
+  - queue（队列）
+  - exchange（交换机）
+- 队列特点：
+  - 非持久化标记（undurable）
+  - 延时队列（delay）
+  - 优先队列（priority）
+- 路由特点：
+  - direct（直接）
+  - topic（主题）
+  - fanout（扇区）
+  - headers（头信息）
+- 作用（举例）：
+  - order（订单）
 
 
 
