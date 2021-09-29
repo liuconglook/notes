@@ -1,5 +1,37 @@
 ## 问题汇总
 
+### Google Hacking
+
+https://zhuanlan.zhihu.com/p/22161675
+
+~~~
+// 默认And，联合几个关键字一起搜索
+keyword keyword2 keyword3
+// 或
+keyword | keyword2 | keyword3
+
+// 指定网站搜索
+site:www.baidu.com
+
+// 指定文件
+fileType:pdf
+
+// 搜索标题 allintitle可混合操作符使用
+intitle:java
+// google搜索的标题
+insubject:java
+// 搜索正文 allintext可混合操作符使用
+intext:优点
+
+// 时间范围
+daterange:
+
+// 指定公司股票市场信息
+stocks:百度
+~~~
+
+
+
 ### LayUI
 
 ~~~js
@@ -84,6 +116,12 @@ upload.render({
 });
 let formData = new FormData();
 formData.append("file", $("#uploadFile").next()[0].files[0]);
+$.ajax({
+    processData: false,
+    contentType: false,
+    data: formData
+});
+@RequestParam(value = "file", required = false) MultipartFile file
 ~~~
 
 ### JS
@@ -134,6 +172,41 @@ window.DateFormat = function (date, fmt) { //author: meizz
     return fmt;
 }
 ~~~
+
+#### npm
+
+~~~shell
+# 安装windows编译环境
+npm install --global --production windows-build-tools
+npm install -g node-gyp
+npm install -g node-sass --save-dev
+
+# 编译并安装程序
+npm install
+# Failed at the node-sass@4.12.0 postinstall script.
+# 查看node与node-sass版本对应关系：https://www.npmjs.com/package/node-sass
+# 我node:v14.15.4，所有需要node-sass:v4.14+
+# 查看所有版本
+npm view node-sass versions
+# 最新版
+npm view node-sass version
+# 查看本地安装的版本
+npm ls node-sass
+# 查看全局安装的版本
+npm ls node-sass -g
+# 查看更多信息
+npm info node-sass
+
+npm uninstall node-sass
+npm cache clean --force
+npm install node-sass@4.14.1
+npm install
+
+# 运行
+npm run serve
+~~~
+
+
 
 ### JAVA
 
@@ -1456,11 +1529,190 @@ TDD是专业人士的选择。它是一项能够提升代码确定性、给程�
   - 要求客户对项目程序的外观、感觉和性能进行评价。
   - 客户会以新的用户素材的方式提供反馈。
 
+> 测试
+
+- 测试的好处
+  - 无论是增加功能或修改程序，测试都能告诉我们程序是否仍具有正确的行为。
+  - 通过调用者的角度去编写程序。
+  - 首先测试，就需要把程序设计为可测试的。
+    - 而为了易于调用和可测试的，就必须解除软件中的耦合。
+  - 测试可用作为一种的文档，里面包含了代码的正确和失败的使用，可用帮助其他程序员了解如何使用代码。
+- 测试优先设计
+- 测试促使模块之间隔离
+
+> 验收测试
+
+- 单元测试是用来验证系统中个别机制的白盒测试（white-box tests）。
+- 验收测试是用来验证系统满足客户需求的黑盒测试（black-box tests）。
+- 验收测试由不了解系统内部机制的人编写。
+  - 可以是客户或和一些技术人员（QA）一起编写。
+- 单元测试是可编译、运行的有关系统内部结构的文档。
+- 验收测试是有关系统特性的可编译、执行的文档。
+
+> 重构（55）
+
+PrimeGenerator
+
+>编程实践
+
+保龄球比赛（66）
+
+- 积分规则
+  - 共十轮，每轮10个球瓶，有两次投球机会。
+  - 每轮的第一次投球，如果击倒10个球瓶，记“全中”。
+    - 10分+之后两次投球得分
+  - 每轮的第二次投球，如果击倒全部球瓶，记“补中”。
+    - 下一轮的第一次击倒的球瓶数+10，作为本轮“补中”得分。
+  - 如果直至第二次投球结束，还未击倒全部球瓶，则算“失误”。
+    - 两次投球击倒的球瓶数量和作为本轮”失误“得分。
+
+- 简单理解
+  - 累计每次投球数，如果上一轮是”全中“或“补中”，则本轮第一次投球数得分翻倍。
+
+> 敏捷设计
+
+- 拙劣设计的症状
+  - 僵化性（Rigidity）：设计难以改变。
+    - 因为每个改动都会迫使许多对系统其他部分的其他改动。
+    - 如果单一的改动会导致依赖关系的模块中的连锁改动，那么设计就是僵化的。
+  - 脆弱性（Fragility）：设计易于遭到破坏。
+    - 在进行一个改动时，程序的许多地方就可能出现问题。
+  - 牢固性（Immobility）：设计难以重用。
+    - 系统中包含了其他系统有用的部分，但是要把这些部分从系统中分离出来所需要的努力和风险是巨大的。
+  - 粘滞性（Viscosity）：做正确的事情比做错误的事情要困难。
+    - 当那些可以保持系统设计的方法比那些生硬手法更难应用时，就表明设计具有高的粘滞性。
+  - 不必要的复杂性（Needless Complexity）：过分设计。
+    - 如果设计中包含当前没有用的组成部分，它就含有不必要的复杂性。
+  - 不必要的重复（Needless Repetition）：设计中包含重复的结构，而该重复的结构本可以使用单一的抽象进行统一。
+    - 你永远也不知道这块代码最初编写在哪，又被复制了多少次，一旦这块代码出了问题就得修改多处。
+  - 晦涩性 （Opacity）：模块难以理解。
+    - 代码应用清晰、富有表现力的方式编写。
+
+- SOLID原则
+  - 单一职责原则（The Single Responsiblity Principle，简称SRP）
+    - 就一个类而言，应该仅有一个引起它变化的原因。
+  - 开放-封闭原则（The Open-Close Principle，简称OCP）
+    - 软件实体（类、模块、函数等等）应该是可以扩展的，但是不可修改的。
+  - 里氏替换原则（The Liskov Substitution Principle，简称LSP）
+    - 子类型必须能够替换掉它们的基类型。
+    - 模型的有效性只能通过它的客户端程序来表现。
+    - OOD中is-a关系是就行为方式而言的。
+    - 可替换性可用通过显式或者隐式的契约来定义。
+  - 接口隔离原则（The Interface Segregation Interface，简称ISP）
+    - 不应该强迫客户依赖于它们不用的方法。
+  - 依赖倒置原则（The Dependency Inversion Principle，简称DIP）
+    - 高层模块不应该依赖于底层模块。二者都应该依赖于抽象。
+    - 抽象不应该依赖于细节。细节应该依赖于抽象。
+    - Hollywood原则：“Don't call us, we'll call you.”（不要调用我们，我们会调用你。）
+    - 依赖于抽象
+      - 任何变量都不应该持有一个指向具体类的指针或者引用。
+      - 任何类都不应该从具体类派生。
+      - 任何方法都不应该覆写它的任何基类中的已经实现了的方法。
+
+- 什么是敏捷设计
+  - 设计
+    - 设计是一个抽象的概念。
+      - 它和程序的概括形状、结构以及每一个模块、类和方法的详细形状和结构有关。
+      - 可用使用不同的媒介去描述它。
+      - 最后，源代码就是设计。
+    - 用来描绘源代码的图示只是设计的附属物，而不是设计本身。
+  - 软件的腐化
+    - 在非敏捷环境中，由于需求没有按照初始设计预见的方式进行变化，从而导致了设计的退化。
+    - 敏捷团队依靠变化来获取活力。
+      - 团队几乎不进行预先设计。
+      - 更愿意保持系统设计尽可能的干净、简单，并使用许多单元测试和验收测试作为支援。
+      - 每次迭代结束所生成的系统都具有最合适于那次迭代中需求的设计。
+
+> 薪水支付案例（==160==）
+
+- 钟点工
+  - 每天提交工作时间卡。
+  - 每天8小时，超出部分按1.5倍工资计算。
+  - 每周五支付。
+  
+- 月薪
+  - 每月的最后一个工作日支付。
+  
+- 酬金
+  - 根据销售情况，支付一定数量的酬金。
+  
+- 支付方式
+  - 邮寄支付支票
+  - 指定银行账户
+  
+- 加入协会
+  - 记录每周的服务费用，下个月从薪水中扣除。
+  
+- 薪水支付程序
+  - 每个工作日运行一次，为相应的雇员进行支付。
+
+- 测试用例
+
+  - ~~~shell
+    // 增加雇员 H（钟点工）、S（月薪）、C（月薪+酬金）
+    AddEmp <EmpID> "<name>" "<address>" H <hourly-rate> 
+    AddEmp <EmpID> "<name>" "<address>" S <monthly-rate> 
+    AddEmp <EmpID> "<name>" "<address>" C <monthly-rate> <commission-rate>
+    
+    // 删除雇员
+    DelEmp <EmpID>
+    
+    // 登记时间卡(H钟点工)
+    TimeCard <EmpID> <date> <hours>
+    
+    // 登记销售凭条(C酬金)
+    SalesReceipt <EmpID> <date> <amount>
+    
+    // 登记协会服务费
+    ServiceCharge <memberID> <amount>
+    
+    // 更改雇员明细
+    ChgEmp <EmpID> Name <name> // 雇员名
+    ChgEmp <EmpID> Address <address> // 雇员地址
+    ChgEmp <EmpID> Hourly <hourlyRate> // 每小时报酬
+    ChgEmp <EmpID> Salaried <salary> // 薪水
+    ChgEmp <EmpID> Commissioned <salary> <rate> // 酬金
+    ChgEmp <EmpID> Hold // 支票
+    ChgEmp <EmpID> Direct <bank> <account> // 存款
+    ChgEmp <EmpID> Mail <address> // 邮寄支票
+    ChgEmp <EmpID> Member <memberID> Dues <rate> // 加入协会
+    ChgEmp <EmpID> NoMember <noMember // 退出协会
+    
+    // 每日支付
+    PayDay <date>
+    ~~~
+
+> 设计模式
+
+- 命令（command）模式
+  - 将请求（命令）封装为一个对象，这样可以使用不同的请求参数化其他对象（将不同请求依赖注入到其他对象），并且能够支持请求（命令）的排序执行、记录日志、撤销等（附加控制）功能。
+  - 事务操作：校验命令。
+  - 时间上解耦：校验后，可自动执行。
+  - UNDO：撤销，用栈存储命令的执行，出栈后调用对象的undo(()方法可进行撤销。
+- 主动对象（active object）模式（==168==）
+  - 主动对象模式基于命令模式，是实现多线程控制的一项古老的技术。
+  - ActiveObject维护一个Command对象的链表，当调用run()方法时遍历链表执行命令。
+- 模板方法（template method）模式
+  - 模板方法模式在一个方法中定义一个算法骨架，并将某些步骤推迟到子类中实现。
+  - 模板方法模式可以让子类在不改变算法整体结构的情况下，重新定义算法中的某些步骤。
+  - 将通用的算法放到一个基类（抽象类），子类继承基类来实现变动的步骤。
+- 策略（strategy）模式
+  - 定义一组算法类，将每个算法分别封装起来，让他们可以互相替换。
+  - 策略模式可以使算法的变化独立于使用他们的客户端（指使用算法的代码）。
+  - 编写模板类，利用多态传递接口的实现类，委托接口完成变动的步骤。
+- 门面（facade）模式
+  - 也叫外观模式，它为子系统提供一组统一的接口，定义一组高层接口让子系统更易用。
+  - 为一组具有复杂且全面的接口对象提供一个简单且特定的接口。
+  - 上层的管道策略。
+- 中介（mediator）模式
+  - 
+  - 下层的管道策略。
 
 
 
 
-47
+
+183
 
 
 
