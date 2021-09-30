@@ -355,10 +355,17 @@ list.removeIf(e -> e.getAge() == 20 || e.getAge() == 18);
   - mapping
     - 比如收集age，先选择收集age，再toList。
 
+<<<<<<< Updated upstream
 #### Enum
 
 > mysql enum
 
+=======
+#### enum
+
+> mysql enum
+
+>>>>>>> Stashed changes
 ~~~sql
 -- 存储 java enum 的 name 值
 `status` enum('PENDING','APPROVED','REJECTED') NOT NULL COMMENT '状态：PENDING-审核中、APPROVED-已审核、REJECTED-已退回',
@@ -552,6 +559,7 @@ public class Article {
     }
 }
 ~~~
+<<<<<<< Updated upstream
 
 #### UML
 
@@ -569,6 +577,8 @@ public class Article {
   - 聚合aggregation：空心菱形+实线
   - 组合composition：菱形+实线箭头
   - 依赖dependency：虚线箭头
+  =======
+>>>>>>> Stashed changes
 
 
 
@@ -1491,7 +1501,24 @@ TDD是专业人士的选择。它是一项能够提升代码确定性、给程�
   - 例如：以每秒60个字符的速度将文本输出到屏幕的系统。程序将产生的文本放到一个缓冲区，当满了后，则放入磁盘，当缓冲区快空时，再切换回来。用卡车托运垃圾来比喻，缓冲区就是小卡车，屏幕是垃圾场，程序是垃圾制造者。
   - 例如：分析网络流量的系统。每30分钟，系统会轮询许多网络适配器，并从中获取监控数据。每个网络适配器提供一小块由几个单独的变量组成的数据，我们这些数据块为“面包切片”，分析程序“烤制”这些切片，因被称为“烤面包机”，而数据块中的单个变量被称为“面包屑”。
 
+<<<<<<< Updated upstream
 > 计划
+=======
+41
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> Stashed changes
 
 对极限编程中计划游戏部分的描述。
 
@@ -1705,8 +1732,14 @@ PrimeGenerator
   - 为一组具有复杂且全面的接口对象提供一个简单且特定的接口。
   - 上层的管道策略。
 - 中介（mediator）模式
-  - 
   - 下层的管道策略。
+- 单例（singleton）模式
+  - 私有构造，提供一个静态的实例化对象的方法。
+  - 跨平台、延迟创建。
+- 单态（monostate）模式
+  - 静态成员变量，使得不管多少个对象，其属性都共享。
+  - 其方法不是静态的，可派送类。因此，不同的派生类基于同样的属性表现不同的行为。
+- 
 
 
 
