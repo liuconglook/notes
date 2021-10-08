@@ -555,19 +555,29 @@ public class Article {
 #### UML
 
 - 三层：
-  - 类名、抽象类斜体、接口加`<<interface>>`
+  - 实体类名、抽象类斜体、接口加`<<interface>>`
   - 属性、字段
   - 方法、行为
     - +：public
     - -：private
     - #：protected
 - 关系：
-  - 实现implements：三角形+虚线
-  - 继承extends：三角形+实线
-  - 关联association：实线箭头
-  - 聚合aggregation：空心菱形+实线
-  - 组合composition：菱形+实线箭头
-  - 依赖dependency：虚线箭头
+  - 实现（implements）/继承（extends）：空心三角形+虚线/实线
+    - 实现类或继承类可统称泛化（Generalization），一般虚线指实现，实线指继承。
+    - 是实现还是继承，通过类（普通类、抽象类、接口）来区分。
+    - 例如：B实现了A，==B 空心三角形+虚线/实线 A==
+  - 依赖（dependency）：虚线箭头
+    - 例如：学生依赖电脑。==Student 虚线箭头 Computer==
+  - 关联（association）：实线箭头
+    - 关联比依赖强。
+    - 例如：学生可以没有电脑，但学生不能没有老师。==Student 实线箭头 Teacher==
+    - 单向关联（实线箭头）、双向关联（实线）、自身关联（实线连自己）、多维关联（实线，中间空心菱形）
+  - 聚合（aggregation）：空心菱形+实线
+    - 聚合表示集体和个体之间的关联关系
+    - 例如：学生属于班级这个集体。==Classes 空心菱形+实线 Student==
+  - 组合（composition）：菱形+实线
+    - 组合表示个体与组成部分之间的关联关系。
+    - 例如：鼠标是电脑的一部分。==Computer 菱形+实线 Mouse==
 
 
 
@@ -1663,19 +1673,22 @@ PrimeGenerator
     SalesReceipt <EmpID> <date> <amount>
     
     // 登记协会服务费
-    ServiceCharge <memberID> <amount>
+    ServiceCharge <memberID> <amount> <date>
     
     // 更改雇员明细
     ChgEmp <EmpID> Name <name> // 雇员名
     ChgEmp <EmpID> Address <address> // 雇员地址
+    
     ChgEmp <EmpID> Hourly <hourlyRate> // 每小时报酬
     ChgEmp <EmpID> Salaried <salary> // 薪水
     ChgEmp <EmpID> Commissioned <salary> <rate> // 酬金
-    ChgEmp <EmpID> Hold // 支票
-    ChgEmp <EmpID> Direct <bank> <account> // 存款
-    ChgEmp <EmpID> Mail <address> // 邮寄支票
+    
+    ChgEmp <EmpID> Hold // 邮寄支票到收纳人地址
+    ChgEmp <EmpID> Direct <bank> <account> // 存入指定的银行帐号
+    ChgEmp <EmpID> Mail <address> // 邮寄支票到指定地址
+    
     ChgEmp <EmpID> Member <memberID> Dues <rate> // 加入协会
-    ChgEmp <EmpID> NoMember <noMember // 退出协会
+    ChgEmp <EmpID> NoMember <noMember> // 退出协会
     
     // 每日支付
     PayDay <date>
@@ -1728,7 +1741,7 @@ PrimeGenerator
 
 
 
-197
+234
 
 
 
