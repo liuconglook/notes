@@ -24,5 +24,6 @@
   * [DesignMode](/DesignMode/)
 * My Center
   * [Memo（随笔）](/Memo/)
+  * [Test（测试笔记）](/Test/)
   * [Bookrack（我的书架）](/Bookrack/)
 

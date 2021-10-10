@@ -991,7 +991,7 @@ Response:
 ~~~yml
 spring:
   data:
-    elasticsearch.:
+    elasticsearch:
       client:
         reactive:
           endpoints: 127.0.0.1:9200
@@ -1146,7 +1146,7 @@ spring:
   rabbitmq:
     host: localhost # rabbitmq的连接地址
     port: 5672 # rabbitmq的连接端口号
-    virtual-host: /mall # rabbitmq的虚拟host
+    virtual-host: /mall # rabbitmq的虚拟host，需在Admin => Virtual Hosts中创建
     username: mall # rabbitmq的用户名
     password: mall # rabbitmq的密码
     publisher-confirms: true #如果对异步消息需要回调必须设置为true

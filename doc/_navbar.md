@@ -9,5 +9,6 @@
   * [DesignMode](/DesignMode/)
 * My Center
   * [Memo](/Memo/)
+  * [Test](/Test/)
   * [Bookrack](/Bookrack/)
 
