@@ -579,7 +579,144 @@ public class Article {
     - 组合表示个体与组成部分之间的关联关系。
     - 例如：鼠标是电脑的一部分。==Computer 菱形+实线 Mouse==
 
+### Python
 
+~~~shell
+# 设置源
+pip3 install cryptography -i http://mirrors.aliyun.com/simple/ --trusted-host=mirrors.aliyun.com
+
+# 更新pip
+python -m pip install -U pip
+
+# 安装模块
+pip install pyautogui
+
+# 运行程序
+python autoClick.py
+~~~
+
+#### 基本数据类型
+
+~~~python
+# bool值判断，以下判断为False，其他为True
+False, None, 0, "", [], {}, ()
+
+# 取反
+isEmpty = False
+print(not isEmpty) # True
+
+# bool转string
+str(isEmpty)
+
+~~~
+
+#### 作用域
+
+~~~python
+isEmpty = False
+def fuc():
+	global isEmpty # 申明使用全局变量
+    print(isEmpty) # False
+~~~
+
+#### pyautogui
+
+https://pypi.org/project/PyAutoGUI/
+
+~~~python
+import pyautogui
+
+# 点击坐标、点击次数、点击间隔、左键
+pyautogui.click(1900, 10, clicks=2, interval=0.0, button='left')
+
+# 获取屏幕宽高
+width, height = pyautogui.size()
+print(width, height)
+~~~
+
+#### keyboard
+
+https://pypi.org/project/keyboard/
+
+~~~python
+import keyboard
+
+def event():
+	print('enter f9')
+
+# 设置热键，event事件
+keyboard.add_hotkey('f9', event)
+~~~
+
+#### 多线程
+
+~~~python
+import _thread
+
+def task(threadName, delay):
+	print('run')
+
+# 启动线程，运行task函数
+_thread.start_new_thread(task, ("mouse_move", 2, ))
+~~~
+
+#### 监听鼠标移动
+
+https://pypi.org/project/pynput/
+
+~~~python
+from pynput.mouse import Listener
+
+def on_move(x, y):
+    print(x, y)
+
+# join监听事件，开始监听
+with Listener(on_move=on_move) as listener:
+		listener.join()
+~~~
+
+#### 自动点击程序
+
+按`f9`可`开始/结束`自动点击（移动到右上角），控制鼠标`悬停/离开`（右上角）可`开始/结束`自动点击
+
+~~~python
+import pyautogui
+import keyboard
+from pynput.mouse import Listener
+import _thread
+
+isClick = False
+
+def event():
+	global isClick
+	if isClick:
+		isClick = False
+	else:
+		isClick = True
+	print(str(isClick) + '\t', end = "\r")
+
+def on_move(x, y):
+	global isClick
+	if isClick & (x < 1890 | y > 20):
+		isClick = False
+		print(str(isClick) + '\t', end = "\r")
+	elif x > 1890 & y < 20:
+		isClick = True
+		print(str(isClick) + '\t', end = "\r")
+
+def startClick():
+	while(True):
+		if isClick:
+			pyautogui.click(1900, 10, clicks=11, interval=0.0, button='left')
+
+def mouse_move(threadName, delay):
+	with Listener(on_move=on_move) as listener:
+		listener.join()
+
+keyboard.add_hotkey('f9', event)
+_thread.start_new_thread(mouse_move, ("mouse_move", 2, ))
+startClick()
+~~~
 
 ### MSQL
 
@@ -1652,10 +1789,9 @@ PrimeGenerator
   - 指定银行账户
   
 - 加入协会
-  
-  - 每周记录会费。
+
   - 记录每周的服务费用，下个月从薪水中扣除。
-  
+
 - 薪水支付程序
   - 每个工作日运行一次，为相应的雇员进行支付。
 
@@ -1698,13 +1834,12 @@ PrimeGenerator
     PayDay <date>
     ~~~
 
-**第一次迭代（200）**
-
-
-
-
+- 设计实现（200）
+- java版实现：https://github.com/liuconglook/payroll
 
 > 设计模式
+
+不存在完美的结构，只存在那些试图去平衡当前的代价和收益的结构。随着时间的过去，这些结构肯定会随着系统需求的改变而改变。管理这种变化的诀窍是尽可能地保持系统简单、灵活。
 
 - 命令（command）模式
   - 将请求（命令）封装为一个对象，这样可以使用不同的请求参数化其他对象（将不同请求依赖注入到其他对象），并且能够支持请求（命令）的排序执行、记录日志、撤销等（附加控制）功能。
@@ -1736,6 +1871,56 @@ PrimeGenerator
   - 其方法不是静态的，可派送类。因此，不同的派生类基于同样的属性表现不同的行为。
 - 空对象（null object）模式
   - 返回空对象，而不是null，空对象的行为什么也不做。
+- 工厂（factory）模式
+  - 将对象的创建交由工厂。
+- 组合（composite）模式
+  - 将一组对象组织成树形结构，以表示一种“部分-整体”的层次结构。
+  - 将一对多的关系转换为一对一的关系。
+- 观察者（observer）模式
+  - 观察者模式也被称为发布订阅模式（Publish-Subscribe Design Pattern）和回归模式。在对象之间定义一个一对多的依赖，当一个对象状态改变的时候，所有依赖的对象都会自动收到通知。
+  - 数字时钟（288），观察者模式的演化过程。
+- 抽象服务（abstract server）模式
+  - 例如MVC三层架构，Controller层不应直接依赖具体的Service，而是依赖其抽象的服务接口。
+- 适配器（adapter）模式
+  - USB转接头充当适配器，将两种不兼容的接口，通过转接变得可以一起工作。
+- 桥接（bridge）模式
+  - 一个类存在两个（或多个）独立变化的维度，我们通过组合的方式，让这两个（或多个）维度可以独立进行扩展。
+- 代理（proxy）模式
+  - 在不改变原始类代码的情况下，通过引入代理类来给原始类附加功能。
+- stairway to heaven模式
+  - 是另一个可以完成和Proxy模式一样的依赖倒置的模式。
+- 访问者（visitor）模式
+  - 允许一个或者多个操作应用到一组对象上，解耦操作和对象本身。
+
+> 包结构设计（251）
+
+六个设计原则
+
+- 内聚性
+  - 重用发布等价原则（REP）：重用的粒度就是发布的粒度。
+    - 重用一个类库时，希望这个类库有人维护。
+    - 并且有拒绝新版本的权利，或要求对旧版提供一段时间的维护。
+  - 共同重用原则（CRP）：一个包中的所有类应该是共同重用的。如果重用了包中的一个类，那么就要重用包中的所有类。
+    - 在这样的一个包中，我们会看到类之间的很多的相互依赖。
+  - 共同封闭原则（CCP）：包中的所有类对于同一类性质的变化应该是共同封闭的。一个变化若对一个包产生影响，则将对该包中的所有类产生影响，而对其他的包不造成任何影响。
+- 耦合性
+  - 无环依赖原则（ADP）：在包的依赖关系图中不允许存在环。
+    - 每周构建、消除依赖环
+    - 依赖倒置原则（DIP）
+  - 稳定依赖原则（SDP）：朝着稳定的方向进行依赖。
+    - 如果包依赖的包越多就越不稳定。
+  - 稳定抽象原则（SAP）：包的抽象程度应该和其稳定程度一致。
+    - 稳定的包应该包含抽象类。
+    - 不稳定的包应该是具体的，使其内部的具体代码易于修改。
+
+> 气象站案例
+
+nimbus
+
+- 监控屏
+- 调度器
+- 大气压传感器
+- 温度传感器
 
 
 
@@ -1743,9 +1928,7 @@ PrimeGenerator
 
 
 
-
-
-239
+338
 
 
 
