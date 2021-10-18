@@ -229,6 +229,11 @@ String.format("T%07d", 1); // T0000001
 
 // 前端json，后台接收数组
 @RequestParam(value = "idList[]") Integer[] idList
+    
+// transient关键字：忽略序列号字段，需实现Serializable接口
+public class User implements Serializable{
+    transient private String password;
+}
 ~~~
 
 #### Stream
@@ -595,18 +600,17 @@ pip install pyautogui
 python autoClick.py
 ~~~
 
-#### 基本数据类型
+#### 基础
 
 ~~~python
 # bool值判断，以下判断为False，其他为True
 False, None, 0, "", [], {}, ()
 
-# 取反
-isEmpty = False
-print(not isEmpty) # True
-
 # bool转string
 str(isEmpty)
+
+# 与或非
+and or not
 
 ~~~
 
@@ -697,17 +701,18 @@ def event():
 
 def on_move(x, y):
 	global isClick
-	if isClick & (x < 1890 | y > 20):
+	if isClick and (x < 1895 or y > 20):
 		isClick = False
 		print(str(isClick) + '\t', end = "\r")
-	elif x > 1890 & y < 20:
+	elif x > 1895 and y < 20:
 		isClick = True
 		print(str(isClick) + '\t', end = "\r")
 
 def startClick():
+	global isClick
 	while(True):
 		if isClick:
-			pyautogui.click(1900, 10, clicks=11, interval=0.0, button='left')
+			pyautogui.click(1900, 10, clicks=1, interval=0.0, button='left')
 
 def mouse_move(threadName, delay):
 	with Listener(on_move=on_move) as listener:
@@ -1769,74 +1774,6 @@ PrimeGenerator
       - 更愿意保持系统设计尽可能的干净、简单，并使用许多单元测试和验收测试作为支援。
       - 每次迭代结束所生成的系统都具有最合适于那次迭代中需求的设计。
 
-> 薪水支付案例（==160==）
-
-- 钟点工
-  - 每天提交工作时间卡。
-  - 每天8小时，超出部分按1.5倍工资计算。
-  - 每周五支付。
-  
-- 月薪
-  - 每月的最后一个工作日支付。
-  
-- 酬金
-  
-  - 每隔一周的周五支付。
-  - 根据销售情况，支付一定数量的酬金。
-  
-- 支付方式
-  - 邮寄支付支票
-  - 指定银行账户
-  
-- 加入协会
-
-  - 记录每周的服务费用，下个月从薪水中扣除。
-
-- 薪水支付程序
-  - 每个工作日运行一次，为相应的雇员进行支付。
-
-- 测试用例
-
-  - ~~~shell
-    // 增加雇员 H（钟点工）、S（月薪）、C（月薪+酬金）
-    AddEmp <EmpID> "<name>" "<address>" H <hourly-rate> 
-    AddEmp <EmpID> "<name>" "<address>" S <monthly-rate> 
-    AddEmp <EmpID> "<name>" "<address>" C <monthly-rate> <commission-rate>
-    
-    // 删除雇员
-    DelEmp <EmpID>
-    
-    // 登记时间卡(H钟点工)
-    TimeCard <EmpID> <date> <hours>
-    
-    // 登记销售凭条(C酬金)
-    SalesReceipt <EmpID> <date> <amount>
-    
-    // 登记协会服务费
-    ServiceCharge <memberID> <amount> <date>
-    
-    // 更改雇员明细
-    ChgEmp <EmpID> Name <name> // 雇员名
-    ChgEmp <EmpID> Address <address> // 雇员地址
-    
-    ChgEmp <EmpID> Hourly <hourlyRate> // 每小时报酬
-    ChgEmp <EmpID> Salaried <salary> // 薪水
-    ChgEmp <EmpID> Commissioned <salary> <rate> // 酬金
-    
-    ChgEmp <EmpID> Hold // 邮寄支票到收纳人地址
-    ChgEmp <EmpID> Direct <bank> <account> // 存入指定的银行帐号
-    ChgEmp <EmpID> Mail <address> // 邮寄支票到指定地址
-    
-    ChgEmp <EmpID> Member <memberID> Dues <rate> // 加入协会
-    ChgEmp <EmpID> NoMember <noMember> // 退出协会
-    
-    // 每日支付
-    PayDay <date>
-    ~~~
-
-- 设计实现（200）
-- java版实现：https://github.com/liuconglook/payroll
-
 > 设计模式
 
 不存在完美的结构，只存在那些试图去平衡当前的代价和收益的结构。随着时间的过去，这些结构肯定会随着系统需求的改变而改变。管理这种变化的诀窍是尽可能地保持系统简单、灵活。
@@ -1913,22 +1850,166 @@ PrimeGenerator
     - 稳定的包应该包含抽象类。
     - 不稳定的包应该是具体的，使其内部的具体代码易于修改。
 
-> 气象站案例
+##### 薪水支付案例
+
+第18章（160）
+
+- 钟点工
+  - 每天提交工作时间卡。
+  - 每天8小时，超出部分按1.5倍工资计算。
+  - 每周五支付。
+- 月薪
+  - 每月的最后一个工作日支付。
+- 酬金
+  - 每隔一周的周五支付。
+  - 根据销售情况，支付一定数量的酬金。
+- 支付方式
+  - 邮寄支付支票
+  - 指定银行账户
+- 加入协会
+  - 记录每周的服务费用，下个月从薪水中扣除。
+- 薪水支付程序
+  - 每个工作日运行一次，为相应的雇员进行支付。
+
+> 测试用例
+
+~~~shell
+// 增加雇员 H（钟点工）、S（月薪）、C（月薪+酬金）
+AddEmp <EmpID> "<name>" "<address>" H <hourly-rate> 
+AddEmp <EmpID> "<name>" "<address>" S <monthly-rate> 
+AddEmp <EmpID> "<name>" "<address>" C <monthly-rate> <commission-rate>
+
+// 删除雇员
+DelEmp <EmpID>
+
+// 登记时间卡(H钟点工)
+TimeCard <EmpID> <date> <hours>
+
+// 登记销售凭条(C酬金)
+SalesReceipt <EmpID> <date> <amount>
+
+// 登记协会服务费
+ServiceCharge <memberID> <amount> <date>
+
+// 更改雇员明细
+ChgEmp <EmpID> Name <name> // 雇员名
+ChgEmp <EmpID> Address <address> // 雇员地址
+
+ChgEmp <EmpID> Hourly <hourlyRate> // 每小时报酬
+ChgEmp <EmpID> Salaried <salary> // 薪水
+ChgEmp <EmpID> Commissioned <salary> <rate> // 酬金
+
+ChgEmp <EmpID> Hold // 邮寄支票到收纳人地址
+ChgEmp <EmpID> Direct <bank> <account> // 存入指定的银行帐号
+ChgEmp <EmpID> Mail <address> // 邮寄支票到指定地址
+
+ChgEmp <EmpID> Member <memberID> Dues <rate> // 加入协会
+ChgEmp <EmpID> NoMember <noMember> // 退出协会
+
+// 每日支付
+PayDay <date>
+~~~
+
+- 设计实现（200）
+- java版实现：https://github.com/liuconglook/payroll
+
+##### 气象站案例
+
+第27章（338）
 
 nimbus
+
+weatherStation
 
 - 监控屏
 - 调度器
 - 大气压传感器
 - 温度传感器
+- 闹钟
+
+大气压趋势计算：每小时0.06英寸的上升或下降并且在观测的时刻（每3小时进行一次观测）压力的变化合计为0.02英寸活着更多，那么就应该报告一次压力变化（稳定、上升、下降）
 
 
 
+> 需求概述
 
+- 使用需求（测量值）
+  - 风速和风向
+  - 温度
+  - 大气压力
+  - 相对湿度
+  - 风寒指数
+  - 露点温度
+  - 当前大气压测量值趋势（稳定、上升、下降）。
+    - 例如：当前大气压为29.95英寸汞柱（IOM）并且呈下降趋势。
+  - 持续显示测量值以及当前的时间和日期。
 
+- 24小时历史数据
+  - 温度
+  - 大气压力
+  - 相对湿度
+  - 以曲线图形式展示。
+- 用户设置
+  - 设置当前时间、日期以及时区
+  - 设置显示单位（英制或公制）
+- 管理需求
+  - 把传感器校对到已知值
+  - 复位系统
 
+> 用例
 
-338
+- 用户
+  - 观察系统测量的实时天气信息。
+  - 查看某个传感器的历史数据。
+- 管理者
+  - 校正单个传感器、设置时间/日期、设置测量单位以及在需要时复位系统。
+
+- 用例
+  - 系统显示当前的温度、大气压力、相对湿度、风速、风向、风寒温度以及大气压趋势。
+  - 点击某个传感器，查看其24小时测量值的曲线图。显示当前时间已经前24小时中最高和最低测量值。
+  - 可设置单位、日期、时间。
+  - 复位气象站，恢复到出厂时的缺省设置。
+  - 校对传感器，输入实际值替换掉当前测量值。
+
+> 发布计划
+
+- 发布I
+  - 目标
+    - 创建一个使大部分应用程序独立于Nimbus硬件平台的架构。
+  - 风险
+    - Nimbus1.0 API是否可工作在新操作系统上。
+    - JVM是否能在嵌入式电路板上使用。
+  - 交付
+    - 运行着新系统和新版本JVM的硬件。
+    - 显示当前的温度以及大气压力测量值。
+    - 当大气压力有变化时，系统会通知我们有关压力的上升、下降或者平衡的情况。
+    - 每个小时，显示过去24小时的温度和大气压力测试值。（持久化）
+    - 每天上午的12点，系统显示前一天的最高和最低的温度以及大气压力。
+    - 所有测量值都以公制表示。
+- 发布II
+  - 目标
+    - 增加用户界面。
+    - 设置单位、日期时间。
+    - 查看温度、大气压力传感器历史数据。
+    - 校准温度、大气压力传感器。
+  - 风险
+    - 液晶屏/触摸屏接口的软件。
+  - 交付
+    - 可观看的用户界面。
+    - 实现目标功能。
+- 发布III
+  - 目标
+    - 监控天气数据
+    - 查看湿度传感器历史数据。
+    - 复位气象站应用系统。
+    - 校准相对湿度、风速、风向、露点传感器。
+    - 记录校准日志。
+  - 风险
+    - 需求变化。
+    - 硬件限制（如：内存、CPU等）。
+  - 交付
+    - 实现目标功能。
+    - 可部署运行的软件。
 
 
 
