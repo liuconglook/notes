@@ -23,8 +23,7 @@ insubject:java
 // 搜索正文 allintext可混合操作符使用
 intext:优点
 
-// 时间范围
-daterange:
+// 时间范围，工具=>选择时间范围
 
 // 指定公司股票市场信息
 stocks:百度
@@ -185,7 +184,7 @@ npm install -g node-sass --save-dev
 npm install
 # Failed at the node-sass@4.12.0 postinstall script.
 # 查看node与node-sass版本对应关系：https://www.npmjs.com/package/node-sass
-# 我node:v14.15.4，所有需要node-sass:v4.14+
+# 我node:v14.15.4，所以需要node-sass:v4.14+
 # 查看所有版本
 npm view node-sass versions
 # 最新版
@@ -217,7 +216,8 @@ npm run serve
 &lt;= -- <=
 &gt;= -- >=
 
-// 获取yml属性
+// 获取属性
+// 优先级：jar命令行参数 > 系统变量 > properties/yml
 @Autowired
 private Environment environment;
 
@@ -1828,6 +1828,15 @@ PrimeGenerator
   - 是另一个可以完成和Proxy模式一样的依赖倒置的模式。
 - 访问者（visitor）模式
   - 允许一个或者多个操作应用到一组对象上，解耦操作和对象本身。
+  - 访问者（visitor）模式
+    - 双重分发，分发accept类型对象，分发visit访问（执行特定函数）。
+  - 无环（acyclic visitor）模式
+    - accept单独的访问对象。
+  - 装饰者（decorator）模式
+    - 基于组合，对功能的增强。
+  - 扩展对象（extension object）模式
+- 有限状态机（finite state machine，FSM）模式
+  - 实现方式：嵌套switch语句，state模式。
 
 > 包结构设计（251）
 
@@ -2011,7 +2020,13 @@ weatherStation
     - 实现目标功能。
     - 可部署运行的软件。
 
+##### ETS案例
 
+教育考试中心（ETS）
+
+- 
+
+384
 
 #### 修改代码的艺术
 
