@@ -3435,6 +3435,550 @@ https://www.pdai.tech/md/spring/springboot-data-ratelimit.html
 
 ## Spring-Cloud
 
+### 版本
+
+~~~xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>${spring-cloud.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+~~~
+
+#### 2020.0.4
+
+spring-boot-starter-parent:2.5.5
+
+https://cloud.tencent.com/developer/article/1770680
+
+https://juejin.cn/post/6909609435946024974
+
+| Netflix                     | 推荐替代品                               | 说明                                   |
+| --------------------------- | ---------------------------------------- | -------------------------------------- |
+| Hystrix                     | Resilience4j                             | Hystrix自己也推荐你使用它代替自己      |
+| Hystrix Dashboard / Turbine | Micrometer + Monitoring System           | 说白了，监控这件事交给更专业的组件去做 |
+| Ribbon                      | Spring Cloud Loadbalancer                | 忍不住了，Spring终究亲自出手           |
+| Zuul 1                      | Spring Cloud Gateway                     | 忍不住了，Spring终究亲自出手           |
+| Archaius 1                  | Spring Boot外部化配置 + Spring Cloud配置 | 比Netflix实现的更好、更强大            |
+
+#### Hoxton.SR12
+
+spring-boot-starter-parent:2.3.12.RELEASE
+
+### Eureka
+
+服务注册与发现
+
+注册服务：用于保存各服务的ip地址等信息，同时监听各服务状态。
+
+发现服务：可通过服务列表获取某个服务的实例地址进行服务间的调用。
+
+#### Server
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8001
+spring:
+  application:
+    name: eureka-server # 服务名称
+eureka:
+  instance:
+    hostname: localhost # 服务地址
+  client:
+    fetch-registry: false # 指定是否要从注册中心获取服务（注册中心不需要开启）
+    register-with-eureka: false # 指定是否要注册到注册中心（注册中心不需要开启）
+  server:
+    enable-self-preservation: false # 关闭保护模式
+~~~
+
+- 保护模式
+  - 默认90秒没有接受到某个服务的心跳时会注销这个服务，如果在某一时刻丢失过多（网络出故障了）服务就会进行保护模式，不再注销任何服务，直到故障恢复。
+  - 该模式是针对网络异常的安全措施，以保证Eureka服务的健壮和稳定。
+
+> 启动eureka服务
+
+~~~java
+@EnableEurekaServer
+~~~
+
+> 集群
+
+- application-replica1.yml
+
+~~~yml
+server:
+  port: 8002
+spring:
+  application:
+    name: eureka-server
+eureka:
+  instance:
+    hostname: replica1
+  client:
+    serviceUrl:
+      defaultZone: http://replica2:8003/eureka/ #注册到另一个Eureka注册中心
+    fetch-registry: true
+    register-with-eureka: true
+~~~
+
+- application-replica2.yml
+
+~~~yml
+server:
+  port: 8003
+spring:
+  application:
+    name: eureka-server
+eureka:
+  instance:
+    hostname: replica2
+  client:
+    serviceUrl:
+      defaultZone: http://replica1:8002/eureka/ #注册到另一个Eureka注册中心
+    fetch-registry: true
+    register-with-eureka: true
+~~~
+
+- 配置本地host
+  - 127.0.0.1 replica1
+  - 127.0.0.1 replica2
+
+#### Client
+
+> pom.xml
+
+~~~xml
+<dependency>
+	<groupId>org.springframework.cloud</groupId>
+	<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8101 #运行端口号
+spring:
+  application:
+    name: eureka-client #服务名称
+eureka:
+  client:
+    register-with-eureka: true #注册到Eureka的注册中心
+    fetch-registry: true #获取注册实例列表
+    service-url:
+      defaultZone: http://localhost:8001/eureka/ #配置注册中心地址
+~~~
+
+> 启动Eureka客户端
+
+~~~java
+@EnableDiscoveryClient
+~~~
+
+#### Security
+
+带认证的Eureka服务注册中心
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8004
+spring:
+  application:
+    name: eureka-security-server
+  security: #配置SpringSecurity登录用户名和密码
+    user:
+      name: mall
+      password: mall
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    fetch-registry: false
+    register-with-eureka: false
+~~~
+
+> 忽略对Eureka的跨站伪造，因为访问Eureka不需要跨站
+
+~~~java
+@EnableWebSecurity
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.csrf().ignoringAntMatchers("/eureka/**");
+        super.configure(http);
+    }
+}
+~~~
+
+> 启动Eureka客户端
+
+~~~java
+@EnableEurekaServer
+~~~
+
+> 客户端认证格式
+
+~~~
+http://${username}:${password}@${hostname}:${port}/eureka/
+~~~
+
+#### 常用配置
+
+~~~yml
+eureka:
+  client: #eureka客户端配置
+    register-with-eureka: true #是否将自己注册到eureka服务端上去
+    fetch-registry: true #是否获取eureka服务端上注册的服务列表
+    service-url:
+      defaultZone: http://localhost:8001/eureka/ # 指定注册中心地址
+    enabled: true # 启用eureka客户端
+    registry-fetch-interval-seconds: 30 #定义去eureka服务端获取服务列表的时间间隔
+  instance: #eureka客户端实例配置
+    lease-renewal-interval-in-seconds: 30 #定义服务多久去注册中心续约
+    lease-expiration-duration-in-seconds: 90 #定义服务多久不去续约认为服务失效
+    metadata-map:
+      zone: jiangsu #所在区域
+    hostname: localhost #服务主机名称
+    prefer-ip-address: false #是否优先使用ip来作为主机名
+  server: #eureka服务端配置
+    enable-self-preservation: false #关闭eureka服务端的保护机制
+~~~
+
+### Ribbon
+
+负载均衡：主要给服务间调用及API网关转发提供负载均衡功能。
+
+> 2020.0.0版本及之后版本，该模块被移除，替代品：Spring Cloud Loadbalancer
+
+#### RestTemplate
+
+RestTemplate是一个HTTP客户端，使用它可以方便的调用HTTP接口，支持GET/POST/DELETE等方法。
+
+使用RestTemplate来调用其他服务，Ribbon可以很方便的实现负载均衡功能。
+
+- 请求方法
+  - get
+  - post
+  - delete
+- 返回值
+  - ForObject：将结果转换为指定的类型对象。
+  - ForEntity：返回ResponseEntity对象。
+- 参数
+  - url：请求地址（支持字符串和URI对象）
+  - responseType：指定响应的对象类型。
+  - uriVariables：请求地址参数（支持可变参、Map）。
+  - request：请求体对象。
+
+#### Ribbon
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8301
+spring:
+  application:
+    name: ribbon-service
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+service-url:
+  user-service: http://user-service
+~~~
+
+> 赋予RestTemplate负载均衡@LoadBalanced
+
+~~~java
+@Configuration
+public class RibbonConfig {
+
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+~~~
+
+#### 测试
+
+> user-service（8201）
+
+创建UserController
+
+> ribbon-service（8301）
+
+使用RestTemplate重写UserController
+
+> 配置host域名
+
+~~~
+127.0.0.1 user-service
+~~~
+
+> 运行测试
+
+启动eureka-server（8001）
+
+启动ribbon-service（8301）
+
+启动两个user-service（8201、8202）
+
+访问`http://localhost:8301/user/1`，查看两个user-service后台打印。
+
+#### 常用配置
+
+~~~yml
+ribbon:
+  ConnectTimeout: 1000 #服务请求连接超时时间（毫秒）
+  ReadTimeout: 3000 #服务请求处理超时时间（毫秒）
+  OkToRetryOnAllOperations: true #对超时请求启用重试机制
+  MaxAutoRetriesNextServer: 1 #切换重试实例的最大个数
+  MaxAutoRetries: 1 # 切换实例后重试最大次数
+  NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule #修改负载均衡算法
+~~~
+
+> 可对某个服务做负载均衡时，单独配置：
+
+~~~yml
+user-service:
+  ribbon:
+    # 同上
+~~~
+
+>NFLoadBalancerRuleClassName（负载均衡策略）
+
+- com.netflix.loadbalancer.RandomRule：随机。
+- com.netflix.loadbalancer.RoundRobinRule：轮询。
+- com.netflix.loadbalancer.RetryRule：在RoundRobinRule的基础上添加重试机制，即在指定的重试时间内，反复使用线性轮询策略来选择可用实例；
+- com.netflix.loadbalancer.WeightedResponseTimeRule：对RoundRobinRule的扩展，响应速度越快的实例选择权重越大，越容易被选择；
+- com.netflix.loadbalancer.BestAvailableRule：选择并发较小的实例；
+- com.netflix.loadbalancer.AvailabilityFilteringRule：先过滤掉故障实例，再选择并发较小的实例；
+- com.netflix.loadbalancer.ZoneAwareLoadBalancer：采用双重过滤，同时过滤不是同一区域的实例和故障实例，选择并发较小的实例。
+
+### Hystrix
+
+服务容错保护，具备服务降级、服务熔断、线程隔离、请求缓存、请求合并及服务监控等功能。
+
+> 2020.0.0版本及之后版本，该模块被移除，替代品：Resilience4j
+
+#### pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+~~~
+
+#### application.yml
+
+~~~yml
+server:
+  port: 8401
+spring:
+  application:
+    name: hystrix-service
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+service-url:
+  user-service: http://user-service
+~~~
+
+#### 启用
+
+~~~java
+@EnableCircuitBreaker
+~~~
+
+#### Annotation
+
+@HystrixCommand
+
+- fallbackMethod：指定服务降级处理方法；
+- ignoreExceptions：忽略某些异常，不发生服务降级；
+- commandKey：命令名称，用于区分不同的命令；
+- groupKey：分组名称，Hystrix会根据不同的分组来统计命令的告警及仪表盘信息；
+- threadPoolKey：线程池名称，用于划分线程池。
+
+> 服务降级
+
+- 关闭user-service服务后，访问不到就会执行降级的方法。
+- 调用服务后抛出异常也会降级，可通过ignoreExceptions忽略异常，不降级处理。
+
+~~~java
+@HystrixCommand(fallbackMethod = "getDefaultUser")
+public CommonResult getUser(Long id) {
+    return restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+}
+
+public CommonResult getDefaultUser(@PathVariable Long id) {
+    User defaultUser = new User(-1L, "defaultUser", "123456");
+    return new CommonResult<>(defaultUser);
+}
+~~~
+
+> 请求缓存
+
+- @CacheRresult：开启缓存，默认所有参数作为缓存key。cacheKeyMethod指定缓存key的生成方法。
+- @CacheKey：指定缓存的key，注解参数，可以指定参数或参数值为缓存key。
+- @CacheRemove：移除缓存，需指定commandKey。
+
+~~~java
+@CacheResult(cacheKeyMethod = "getCacheKey")
+@HystrixCommand(fallbackMethod = "getDefaultUser", commandKey = "getUserCache")
+@Override
+public CommonResult getUserCache(Long id) {
+    logger.info("getUserCache id:{}", id);
+    return restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+}
+
+@CacheRemove(commandKey = "getUserCache", cacheKeyMethod = "getCacheKey")
+@HystrixCommand
+@Override
+public CommonResult removeCache(Long id) {
+    logger.info("removeCache id:{}", id);
+    return restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+}
+
+public String getCacheKey(Long id) {
+    return String.valueOf(id);
+}
+~~~
+
+需要在每次使用缓存的请求前后对HystrixRequestContext进行初始化和关闭，否则会报`Request caching is not available. Maybe you need to initialize the HystrixRequestContext?`错误。
+
+~~~java
+@Component
+@WebFilter(urlPatterns = "/*",asyncSupported = true)
+public class HystrixRequestContextFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        HystrixRequestContext context = HystrixRequestContext.initializeContext();
+        try {
+            filterChain.doFilter(servletRequest, servletResponse);
+        } finally {
+            context.close();
+        }
+    }
+}
+~~~
+
+> 请求合并
+
+- @HystrixCollapser
+  - batchMethod
+  - collapseProperties
+  - timerDelayInMilliseconds
+
+
+
+
+
+
+
+
+
+
+
+### Loadbalancer
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
