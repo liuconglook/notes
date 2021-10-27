@@ -2341,13 +2341,105 @@ weatherStation
 
 - Split Temporary Variable：分解临时变量。
   - 很多地方使用了某个临时变量，临时变量应该职责单一，使用final。
-- Separate Query From Modifler：将查询与修改分开。
+- Separate Query from Modifler：将查询与修改分开。
 - Replace Method with Method Object：用方法对象替换方法。
   - 将方法提取到类中。
 - Remove Assignments to Parameters：删除对参数的赋值。
   - 声明形参为final，不要对参数赋值。
-- Substitute Algorithm：替换算法
-  - 
+- Substitute Algorithm：替换算法。
+  - 将函数本体替换为另一个算法。
+
+> 对象之间的搬移
+
+- Move Method：搬移方法。
+  - 将方法搬移到其他类，旧方法则委托那个类的方法实现或是删除。
+- Move Field：搬移属性。
+  - 根据职责搬移属性到合适的类。
+- Encapsulate Field：封装属性。
+  - 将属性变为私有，仅暴露需要的Getter和Setter。
+- Extract Calss：提取类。
+  - 将属性和函数提取到新的类。
+- Inline Class：内联类。
+  - 将这个类的所有属性和方法搬移到另一个类中，然后移除原类。
+  - 将原类声明为私有的，可帮助捕捉对原类的隐藏引用点。
+- Extract Interface：提取接口。
+- Hide Delegate：隐藏委托。
+  - 在本对象中建立一个方法去调用委托的另一个类的方法。
+- Remove Middle Man：移除中间人。
+  - 撤销对委托的隐藏，从而可以去除掉这个多余的中间人。
+
+- Introduce Foreign Method：引入外加方法。
+  - 提取为服务方法，以后使用就会方便很多，也可以减少重复代码。
+- Introduce Local Extention：引入本地扩展。
+  - 将多个相同类型的服务方法提取到类，作为工具类使用。
+  - 可以使用子类化或包装类实现。
+
+> 重新组织数据
+
+- Self Encapsulate Field：自封装属性。
+  - 将其属性封装为方法，并且只以这个方法来访问这个属性。
+- Replace Data Value with Object：以对象取代数据值。
+  - 例如：Person的address字段可以替换为Address，其字段name表示地址。
+- Change Value to Reference：将值对象改为引用对象。
+  - 值对象只对当前类有用，而引用对象对所有类共享。
+  - 通过工厂方法获取引用对象，而不是创建或传递值对象。
+- Change Reference to Value：将引用对象改为值对象。
+  - 值对象不可变。
+- Replace Constructor with Factory Method：用工厂方法替换构造函数。
+  - 将构造函数私有化，提供一个工厂方法。
+
+- Replace Value with Object：用对象替换值。
+- Replace Array with Object：将数组替换为对象。
+  - 将数组封装成对象使用。
+- Replace Magic Number with Symbolic Constant：用常量替换魔术数字。
+- Change Unidirectional Association to Bidirectional：将单向关联更改为双向关联。
+  - 添加一个反向指针，并使修改函数能够同时更新两条连接。
+
+- Change Bidirectional Association to Unidirectional：将双向关联更改为单向关联。
+  - 找到并去除你想去除的指针。
+- Duplicate Observed Data：复制“被监视数据”。
+  - 有一些领域数据置身于GUI控件中，而领域函数需要访问这些数据。
+  - 将该数据复制到一个领域对象中，建立一个Observer模式，用以同步领域对象和GUI对象内的重复数据。
+- Encapsulate Collection：封装集合。
+  - 例如：Collection、List、Vector等。
+- Replace Record with Data Class：用数据类替换记录。
+- Replace Type Code with Class：用类替换类型代码。
+  - 使用枚举类。
+- Replace Type Code with Subclasses：用子类替换类型代码。
+  - 使用多态。
+- Push Down Method：下移方法。
+  - 将方法从父类推到子类。
+- Push Down Field：下移字段。
+  - 将字段从父类推到子类。
+- Replace Type Code with State/Strategy：用状态或策略替换类型代码。
+  - 以状态对象替换类型码。
+- Replace Subclass with Fields：以字段取代子类。
+  - 将对象类型替换为字段，通过工厂方法创建特定类型的类，从而去掉子类。
+
+> 简化条件表达式
+
+- Decompose Conditional：分解条件表达式。
+  - 将条件表达式提取为方法调用，使之可读。
+- Consolidate Conditional Expression：合并条件表达式。
+  - 将共同结果的条件合并起来，并提炼出一个方法进行调用。
+- Consolidate Duplicate Conditional Fragments：合并重复的条件片段。
+  - 如果每个条件分支上都会执行某段代码，请将这段代码放在条件之外。
+- Replace Nested Conditional with Cuard Clauses：用卫语句替换嵌套条件句。
+  - 卫语句：要么返回，要么抛出异常。
+  - 如果条件符合就直接返回，否则进入下一个条件。
+- Remove Control Flag：删除空值标记。
+  - 使用break或continue跳出循环。
+  - 使用return退出循环并返回标记。
+- Introduce Null Object：去除对null值的检验。
+  - Null Object模式。必须是常量，由于不会变化，可用单例来实现。
+- Replace Conditional with Polymorphism：使用多态替换条件。
+- 
+
+
+
+
+
+
 
 
 
