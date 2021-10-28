@@ -2166,10 +2166,6 @@ weatherStation
 
 这样的好处是，当要添加新的case时，不是去修改代码，而是添加一个策略类。
 
-
-
-
-
 ##### 重构
 
 重构（Refactor）：对软件内部结构的一种调整，目的是在不改变软件可观察行为的前提下，提高其可理解性，降低其修改成本。
@@ -2320,7 +2316,7 @@ weatherStation
 
 每当收到bug报告，请先写一个单元测试来暴露bug。
 
-考虑可能出错的边界条件，把测试活力集中在那儿。
+考虑可能出错的边界条件，把测试火力集中在那儿。
 
 ##### 重构手法
 
@@ -2431,15 +2427,88 @@ weatherStation
   - 使用break或continue跳出循环。
   - 使用return退出循环并返回标记。
 - Introduce Null Object：去除对null值的检验。
-  - Null Object模式。必须是常量，由于不会变化，可用单例来实现。
+  - Null Object模式。
 - Replace Conditional with Polymorphism：使用多态替换条件。
-- 
+- Introduce Assertion：引入断言。
+  - 一般编写测试代码时使用，用于检测一定为真的条件。
 
+> 简化函数调用
 
+- Rename Method：重命名方法。
+  - 先给方法加上一个注释，然后再将注释变成方法名称。
+  - 你的代码首先是为人写的，其次是为计算机写的。
 
+- Add Parameter：添加参数。
+- Remove Parameter：删除参数。
 
+- Preserve Whole Object：保持整个对象。
+  - 如果参数都来自一个对象，那么就只传递这个对象。
+- Introduce Parameter Object：引入参数对象。
+  - 将多个参数封装成对象进行传递。
+- Replace Parameter with Method：以函数取代参数。
+  - 如果函数可以自己取得值，那么就不需要传递参数。
+- Replace Parameter with Explicit Method：以明确函数取代参数。
+  - 例如Getter、Setter。一个函数处理一种变化。
+- Parameterize Method：令函数携带参数。
+  - 通过参数来处理多种变化。
+- Separate Query from Modifier：将查询函数和修改函数分离。
+- Hide Method：隐藏函数。
+  - 将函数变为私有的。
+- Remove Setting Method：移除设值函数。
+  - 当对象创建后不允许修改值时，应去掉设值函数，通过构造初始化。
+- Encapsulate Downcast：封装向下转型。
+  - 不把向下转型的工作推给用户。
+- Replace Exception with Test：以测试取代异常。
+  - 先检查后执行，而不是捕捉由执行错误的参数导致的异常。
+- Replace Error Code with Exception：以异常取代错误码。
 
+> 处理泛化关系（Generalization）
 
+- Pull Up Field：字段上移。
+  - 将重复的字段从子类移到超类。
+- Pull Up Method：方法上移。
+  - 将重复的方法从子类移到超类。
+- Push Down Method：方法下移。
+  - 将不通用的方法从超类下移到子类。
+- Push Down Field：字段下移。
+  - 将不通用的字段从超类下移到子类。
+- Pull Up Constructor Body：构造函数本体上移。
+  - 子类通过super调用超类构造。
+- Form Template Method：塑造模板函数。
+  - 模板方法模式。
+- Extract Subclass：提炼子类。
+  - 将一部分特性移到子类中。方法下移、字段下移。
+- Extract Superclass：提炼超类。
+  - 为两个或多个类建立一个超类，将相同特性移到超类。方法上移、字段上移、构造函数本体上移 。
+- Extract Class：提炼类。
+  - 将一部分特性移到一个新类中，本类组合新类使用。
+- Extract Interface：提炼接口。
+- Collapse Hierarchy：折叠继承体系。
+  - 超类与子类之间无太大区别，将它们合为一体。
+- Replace Inheritance with Delegation：以委托取代继承。
+  - 优先使用组合。
+- Replace Delegation with Inheritance：以继承取代委托。
+
+> 大型重构
+
+- Tease Apart Inheritance：梳理并分解继承体系。
+  - 一个继承体系承担两个职责。建立两个继承体系，并通过委托关系让其中一个可用调用另一个。
+- Convert Procedural Design to Objects：将过程化设计转化为对象设计。
+  - 将数据记录变成对象，将大块的行为分为小块，并将行为移入相关对象之中。
+- Separate Domain from Presentation：将领域和表述/显示分离。
+  - 将领域逻辑分离出来，为它们建立独立的领域类。
+- Extract Hierarchy：提炼继承体系。
+  - 建立继承体系，以一个子类表示一种特殊情况。
+
+##### 总结
+
+> 重构是什么？
+
+按我的理解，重构就是整理代码、改善设计。
+
+在还没看过《重构》这本书时我一直都认为自己不会编程，用着面向对象语言写着面向过程的代码。直到看到这本书时我才真正意识到重构和面向对象编程风格的魅力，原来软件可以写的如此之美。
+
+在我看来，本书的很多重构手法都是一种编程经验，与实际编程中所感悟的有一定重合，毕竟好的编程经验会被使用，并被记录下来。
 
 
 
