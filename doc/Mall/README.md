@@ -3648,7 +3648,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ~~~
 
-> 启动Eureka客户端
+> 启动Eureka服务端
 
 ~~~java
 @EnableEurekaServer
@@ -3941,9 +3941,3359 @@ public class HystrixRequestContextFilter implements Filter {
   - collapseProperties
   - timerDelayInMilliseconds
 
+~~~java
 
+@HystrixCollapser(batchMethod = "getUserByIds", collapserProperties = {
+            @HystrixProperty(name = "timerDelayInMilliseconds", value = "100")
+})
+@Override
+public Future<User> getUserFuture(Long id) {
+    return new AsyncResult<User>() {
+        @Override
+        public User invoke() {
+            CommonResult commonResult = restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+            Map data = (Map) commonResult.getData();
+            User user = BeanUtil.mapToBean(data, User.class, true, CopyOptions.create());
+            logger.info("getUserById username:{}", user.getUsername());
+            return user;
+        }
+    };
+}
+@HystrixCommand
+public List<User> getUserByIds(List<Long> ids) {
+    logger.info("getUserByIds:{}", ids);
+    CommonResult commonResult = restTemplate.getForObject(userServiceUrl + "/user/getUserByIds?ids={1}", CommonResult.class, CollUtil.join(ids, ","));
+    return (List<User>) commonResult.getData();
+}
+~~~
 
+#### 常用配置
 
+~~~yml
+hystrix:
+  command: #用于控制HystrixCommand的行为
+    default:
+      execution:
+        isolation:
+          strategy: THREAD #控制HystrixCommand的隔离策略，THREAD->线程池隔离策略(默认)，SEMAPHORE->信号量隔离策略
+          thread:
+            timeoutInMilliseconds: 1000 #配置HystrixCommand执行的超时时间，执行超过该时间会进行服务降级处理
+            interruptOnTimeout: true #配置HystrixCommand执行超时的时候是否要中断
+            interruptOnCancel: true #配置HystrixCommand执行被取消的时候是否要中断
+          timeout:
+            enabled: true #配置HystrixCommand的执行是否启用超时时间
+          semaphore:
+            maxConcurrentRequests: 10 #当使用信号量隔离策略时，用来控制并发量的大小，超过该并发量的请求会被拒绝
+      fallback:
+        enabled: true #用于控制是否启用服务降级
+      circuitBreaker: #用于控制HystrixCircuitBreaker的行为
+        enabled: true #用于控制断路器是否跟踪健康状况以及熔断请求
+        requestVolumeThreshold: 20 #超过该请求数的请求会被拒绝
+        forceOpen: false #强制打开断路器，拒绝所有请求
+        forceClosed: false #强制关闭断路器，接收所有请求
+      requestCache:
+        enabled: true #用于控制是否开启请求缓存
+  collapser: #用于控制HystrixCollapser的执行行为
+    default:
+      maxRequestsInBatch: 100 #控制一次合并请求合并的最大请求数
+      timerDelayinMilliseconds: 10 #控制多少毫秒内的请求会被合并成一个
+      requestCache:
+        enabled: true #控制合并请求是否开启缓存
+  threadpool: #用于控制HystrixCommand执行所在线程池的行为
+    default:
+      coreSize: 10 #线程池的核心线程数
+      maximumSize: 10 #线程池的最大线程数，超过该线程数的请求会被拒绝
+      maxQueueSize: -1 #用于设置线程池的最大队列大小，-1采用SynchronousQueue，其他正数采用LinkedBlockingQueue
+      queueSizeRejectionThreshold: 5 #用于设置线程池队列的拒绝阀值，由于LinkedBlockingQueue不能动态改版大小，使用时需要用该参数来控制线程数
+~~~
+
+### Hystrix Dashboard
+
+熔断器监控
+
+#### pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+#### application.yml
+
+~~~yml
+server:
+  port: 8501
+spring:
+  application:
+    name: hystrix-dashboard
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+#### 启动
+
+~~~java
+@EnableHystrixDashboard
+~~~
+
+http://localhost:8501/hystrix
+
+#### 监控单实例
+
+被监控的实例需要暴露监控端点
+
+~~~yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: 'hystrix.stream' # 暴露hystrix监控端点
+~~~
+
+输入要监控的单实例地址，例如：http://localhost:8201/hystrix.stream
+
+#### 监控集群实例
+
+使用turbine监控集群实例，创建turbine-service服务
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-turbine</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8601
+spring:
+  application:
+    name: turbine-service
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+turbine:
+  app-config: hystrix-service #指定需要收集信息的服务名称
+  cluster-name-expression: new String('default') #指定服务所属集群
+  combine-host-port: true #以主机名和端口号来区分服务
+~~~
+
+> 启动
+
+~~~java
+@EnableTurbine
+~~~
+
+> 测试
+
+测试集群hystrix-service（8401、8402）
+
+需添加本地主机域名：hystrix-service
+
+输入集群监控地址，例如：http://localhost:8601/turbine.stream
+
+### OpenFeign
+
+声明式的服务调用工具，它整合了Ribbon和Hystrix，拥有负载均衡和服务容错功能。
+
+#### pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+~~~
+
+#### application.yml
+
+~~~yml
+server:
+  port: 8701
+spring:
+  application:
+    name: feign-service
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+#### 启用
+
+~~~java
+@EnableFeignClients
+~~~
+
+#### 使用
+
+将UserController复制过来，改为UserService接口，保留其springMVC注解。
+
+~~~java
+@FeignClient(value = "user-service")
+public interface UserService {
+    
+    @PostMapping("/user/create")
+    public CommonResult create(@RequestBody User user);
+
+    @GetMapping("/user/{id}")
+    public CommonResult<User> getUser(@PathVariable Long id);
+
+    @GetMapping("/user/getUserByIds")
+    public CommonResult<List<User>> getUserByIds(@RequestParam List<Long> ids);
+
+    @GetMapping("/user/getByUsername")
+    public CommonResult<User> getByUsername(@RequestParam String username);
+
+    @PostMapping("/user/update")
+    public CommonResult update(@RequestBody User user);
+
+    @PostMapping("/user/delete/{id}")
+    public CommonResult delete(@PathVariable Long id);
+}
+~~~
+
+再复制UserController，修改为直接调用UserService的方法。
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserController {
+    
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/create")
+    public CommonResult create(@RequestBody User user) {
+        return userService.create(user);
+    }
+
+    @GetMapping("/{id}")
+    public CommonResult<User> getUser(@PathVariable Long id) {
+        return userService.getUser(id);
+    }
+
+    @GetMapping("/getUserByIds")
+    public CommonResult<List<User>> getUserByIds(@RequestParam List<Long> ids) {
+        return userService.getUserByIds(ids);
+    }
+
+    @GetMapping("/getByUsername")
+    public CommonResult<User> getByUsername(@RequestParam String username) {
+        return userService.getByUsername(username);
+    }
+
+    @PostMapping("/update")
+    public CommonResult update(@RequestBody User user) {
+        return userService.update(user);
+    }
+
+    @PostMapping("/delete/{id}")
+    public CommonResult delete(@PathVariable Long id) {
+        return userService.delete(id);
+    }
+}
+~~~
+
+#### 测试负载均衡
+
+启动两个user-service（8201、8202）
+
+调用多次http://localhost:8701/user/1
+
+#### 服务降级
+
+创建UserFallbackService实现UserService接口
+
+~~~java
+@Component
+public class UserFallbackService implements UserService {
+    @Override
+    public CommonResult create(User user) {
+        User defaultUser = new User();
+        defaultUser.setId(-1L);
+        defaultUser.setUsername("defaultUser");
+        defaultUser.setPassword("123456");
+        return CommonResult.success(defaultUser);
+    }
+
+    @Override
+    public CommonResult<User> getUser(Long id) {
+        User defaultUser = new User();
+        defaultUser.setId(-1L);
+        defaultUser.setUsername("defaultUser");
+        defaultUser.setPassword("123456");
+        return CommonResult.success(defaultUser);
+    }
+
+    @Override
+    public CommonResult<List<User>> getUserByIds(List<Long> ids) {
+        return CommonResult.success(Collections.emptyList());
+    }
+
+    @Override
+    public CommonResult<User> getByUsername(String username) {
+        User defaultUser = new User();
+        defaultUser.setId(-1L);
+        defaultUser.setUsername("defaultUser");
+        defaultUser.setPassword("123456");
+        return CommonResult.success(defaultUser);
+    }
+
+    @Override
+    public CommonResult update(User user) {
+        return CommonResult.failed("调用失败，服务被降级");
+    }
+
+    @Override
+    public CommonResult delete(Long id) {
+        return CommonResult.failed("调用失败，服务被降级");
+    }
+}
+~~~
+
+修改UserService的@FeignClient注解指定fallback为UserFallbackService
+
+~~~java
+@FeignClient(value = "user-service", fallback = UserFallbackService.class)
+~~~
+
+在feign中开启hystrix
+
+~~~yml
+feign:
+  hystrix:
+    enabled: true #在Feign中开启Hystrix
+~~~
+
+#### 日志
+
+> 配置日志级别
+
+- NONE：默认的，不显示任何日志；
+- BASIC：仅记录请求方法、URL、响应状态码及执行时间；
+- HEADERS：除了BASIC中定义的信息之外，还有请求和响应的头信息；
+- FULL：除了HEADERS中定义的信息之外，还有请求和响应的正文及元数据。
+
+~~~java
+@Configuration
+public class FeignConfig {
+    @Bean
+    Logger.Level feignLoggerLevel() {
+        return Logger.Level.FULL;
+    }
+}
+~~~
+
+> application.yml
+
+~~~yml
+logging:
+  level:
+    com.belean.cloud.feignservice.service.UserService: debug
+~~~
+
+> 示例
+
+http://localhost:8701/user/1
+
+~~~
+<--- HTTP/1.1 200 (549ms)
+ connection: keep-alive
+ content-type: application/json
+ date: Sat, 23 Oct 2021 15:30:52 GMT
+ keep-alive: timeout=60
+ transfer-encoding: chunked
+{"code":200,"message":"操作成功","data":{"id":1,"username":"macro","password":"123456"}}
+<--- END HTTP (92-byte body)
+~~~
+
+#### feign常用配置
+
+~~~yml
+feign:
+  hystrix:
+    enabled: true #在Feign中开启Hystrix
+  compression:
+    request:
+      enabled: false #是否对请求进行GZIP压缩
+      mime-types: text/xml,application/xml,application/json #指定压缩的请求数据类型
+      min-request-size: 2048 #超过该大小的请求会被压缩
+    response:
+      enabled: false #是否对响应进行GZIP压缩
+logging:
+  level: #修改日志级别
+    com.belean.cloud.feignservice.service.UserService: debug
+
+~~~
+
+### Zuul
+
+集成了hystrix、ribbon
+
+API网关服务，它为服务提供了统一的访问入口，支持动态路由与过滤功能。它实现了请求路由、负载均衡、校验过滤、服务容错、服务聚合等功能。
+
+#### pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
+</dependency>
+~~~
+
+#### applicatiton.yml
+
+~~~yml
+server:
+  port: 8801
+spring:
+  application:
+    name: zuul-proxy
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+#### 启用
+
+~~~java
+@EnableZuulProxy
+~~~
+
+- @EnableZuulServer：只支持基本的route与filter功能.
+- @EnableZuulProxy：Zuul Server+服务发现与熔断等功能的增强版,具有反向代理功能。
+
+#### 路由规则
+
+~~~yml
+zuul:
+  routes: #给服务配置路由
+    user-service:
+      path: /userService/** # 默认/user-service/**
+    feign-service:
+      path: /feignService/**
+  # ignored-services: user-service,feign-service #关闭默认路由配置
+  prefix: /api # 前缀
+  # 配置过滤敏感的请求头信息，设置为空就不会过滤
+  # sensitive-headers: Cookie,Set-Cookie,Authorization 
+  # add-host-header: true # 设置为true重定向是会添加host请求头
+  # retryable: true # 关闭重试机制
+  # PreLogFilter: # 过滤器类名
+    # pre: # 过滤器类型
+      # disable: false # 是否禁用过滤器
+~~~
+
+通过网关访问user-service服务：http://localhost:8801/api/userService/user/1
+
+#### 查看路由信息
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: 'routes'
+~~~
+
+查看简单路由信息：http://localhost:8801/actuator/routes
+
+查看路由详细信息：http://localhost:8801/actuator/routes/details
+
+#### 过滤器
+
+> 过滤类型
+
+- pre：在请求被路由到目标服务前执行。
+  - 比如：权限校验、打印日志等功能。
+- routing：在请求被路由到目标服务时执行。
+  - 这是使用Apache HttpClient或Netflix Ribbon构建和发送原始HTTP请求的地方。
+- post：在请求被路由到目标服务后执行。
+  - 比如：给目标服务的响应添加头信息，收集统计数据等功能；
+- error：请求在其他阶段发生错误时执行。
+
+> 自定义过滤器（继承ZuulFilter）
+
+在请求前，打印请求信息的日志。
+
+~~~java
+@Component
+public class PreLogFilter extends ZuulFilter {
+    private Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+
+    /**
+     * 过滤器类型，有pre、routing、post、error四种。
+     */
+    @Override
+    public String filterType() {
+        return "pre";
+    }
+
+    /**
+     * 过滤器执行顺序，数值越小优先级越高。
+     */
+    @Override
+    public int filterOrder() {
+        return 1;
+    }
+
+    /**
+     * 是否进行过滤，返回true会执行过滤。
+     */
+    @Override
+    public boolean shouldFilter() {
+        return true;
+    }
+
+    /**
+     * 自定义的过滤器逻辑，当shouldFilter()返回true时会执行。
+     */
+    @Override
+    public Object run() throws ZuulException {
+        RequestContext requestContext = RequestContext.getCurrentContext();
+        HttpServletRequest request = requestContext.getRequest();
+        String host = request.getRemoteHost();
+        String method = request.getMethod();
+        String uri = request.getRequestURI();
+        LOGGER.info("Remote host:{},method:{},uri:{}", host, method, uri);
+        return null;
+    }
+}
+~~~
+
+> 核心过滤器
+
+优先级：数值越小优先级越高。
+
+| 过滤器名称              | 过滤类型 | 优先级 | 过滤器的作用                                                 |
+| ----------------------- | -------- | ------ | ------------------------------------------------------------ |
+| ServletDetectionFilter  | pre      | -3     | 检测当前请求是通过DispatcherServlet处理运行的还是ZuulServlet运行处理的。 |
+| Servlet30WrapperFilter  | pre      | -2     | 对原始的HttpServletRequest进行包装。                         |
+| FormBodyWrapperFilter   | pre      | -1     | 将Content-Type为application/x-www-form-urlencoded或multipart/form-data的请求包装成FormBodyRequestWrapper对象。 |
+| DebugFilter             | route    | 1      | 根据zuul.debug.request的配置来决定是否打印debug日志。        |
+| PreDecorationFilter     | route    | 5      | 对当前请求进行预处理以便执行后续操作。                       |
+| RibbonRoutingFilter     | route    | 10     | 通过Ribbon和Hystrix来向服务实例发起请求，并将请求结果进行返回。 |
+| SimpleHostRoutingFilter | route    | 100    | 只对请求上下文中有routeHost参数的进行处理，直接使用HttpClient向routeHost对应的物理地址进行转发。 |
+| SendForwardFilter       | route    | 500    | 只对请求上下文中有forward.to参数的进行处理，进行本地跳转。   |
+| SendErrorFilter         | post     | 0      | 当其他过滤器内部发生异常时的会由它来进行处理，产生错误响应。 |
+| SendResponseFilter      | post     | 1000   | 利用请求上下文的响应信息来组织请求成功的响应内容。           |
+
+#### Hystrix和Ribbon
+
+> Hystrix
+
+~~~yml
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+          	# 配置HystrixCommand执行的超时时间，执行超过该时间会进行服务降级处理
+            timeoutInMilliseconds: 1000 
+~~~
+
+> Ribbon
+
+~~~yml
+ribbon: #全局配置
+  ConnectTimeout: 1000 # 服务请求连接超时时间（毫秒）
+  ReadTimeout: 3000 # 服务请求处理超时时间（毫秒）
+~~~
+
+### Config
+
+集中化配置管理。服务端又称分布式配置中心，用于给客户端提供配置信息使用。
+
+#### 配置中心
+
+使用github作为配置中心
+
+#### 服务端
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8901
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git: #配置存储配置信息的Git仓库
+          uri: https://gitee.com/macrozheng/springcloud-config.git
+          username: macro
+          password: 123456
+          clone-on-start: true #开启启动时直接从git获取配置
+          search-paths: '{application}' # 从应用名称的子目录中搜索配置
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+> 启用
+
+~~~java
+@EnableConfigServer
+~~~
+
+> 访问规则
+
+获取master分支下的config-dev**配置信息**：
+
+/{label}/{application}-{profile}
+
+http://localhost:8901/master/config-dev
+
+~~~json
+{
+    "name":"master",
+    "profiles":["config-dev"],
+    "label":null,
+    "version":"caf6549c807a6dde1fbbe399ffca18dc886ac03d",
+    "state":null,
+    "propertySources":[]
+}
+~~~
+
+获取master分支下的config-dev**配置文件信息**：
+
+/{label}/{application}-{profile}.yml
+
+http://localhost:8901/master/config-dev.yml
+
+~~~yml
+config:
+  info: config info for dev(master)
+~~~
+
+#### 客户端
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+~~~
+
+> bootstrap.yml
+
+~~~yml
+server:
+  port: 9001
+spring:
+  application:
+    name: config-client
+  cloud:
+    config: # Config客户端配置
+      profile: dev # 启用配置后缀名称
+      label: dev # 分支名称
+      uri: http://localhost:8901 # 配置中心地址
+      name: config # 配置文件名称，对应application
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+> 刷新配置
+
+客户端通过actuator刷新配置
+
+~~~xml
+<dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+~~~yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: 'refresh' # 刷新配置
+~~~
+
+- Controller层注解刷新配置：@RefreshScope
+- 手动刷新配置：POST http://localhost:9001/actuator/refresh
+
+#### 添加安全认证
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+只需要添加spring-security配置即可。
+
+~~~yml
+server:
+  port: 8905
+spring:
+  application:
+    name: config-security-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://gitee.com/macrozheng/springcloud-config.git
+          username: macro
+          password: 123456
+          clone-on-start: true # 开启启动时直接从git获取配置
+  security: # 配置用户名和密码
+    user:
+      name: macro
+      password: 123456
+~~~
+
+> config-client
+
+客户端只需配置其用户名和密码。
+
+添加bootstrap-security.yml，使用该配置文件启动服务
+
+~~~yml
+server:
+  port: 9002
+spring:
+  application:
+    name: config-client
+  cloud:
+    config:
+      profile: dev #启用配置后缀名称
+      label: dev #分支名称
+      uri: http://localhost:8905 #配置中心地址
+      name: config #配置文件名称
+      username: macro
+      password: 123456
+~~~
+
+#### 集群
+
+> 服务端
+
+分别启动8902和8903两个服务。
+
+> 客户端
+
+去除了直接从注册中心（uri）获取配置，而是通过服务名称（service-id）获取集群中任意服务的配置。
+
+需配置本地host：127.0.0.1 config-server
+
+服务端添加bootstrap-cluster.yml，使用该配置文件启动服务。
+
+~~~yml
+spring:
+  cloud:
+    config:
+      profile: dev #启用环境名称
+      label: dev #分支名称
+      name: config #配置文件名称
+      discovery:
+        enabled: true
+        service-id: config-server
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+### Bus
+
+消息总线，使用轻量级的消息代理来连接各个服务，可以用于广播状态更改（例如配置中心更改）或其他管理指令。
+
+Spring Cloud支持两种消息代理：RabbitMQ和Kafka。
+
+配置中心更改：通过RabbitMQ消息代理实现配置的动态刷新。
+
+#### 服务端
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+增加对RabbitMQ和Actuator端点的配置。
+
+~~~yml
+spring:
+  rabbitmq: #rabbitmq相关配置
+    host: localhost
+    port: 5672
+    virtual-host: /
+    username: guest
+    password: guest
+management:
+  endpoints: #暴露bus刷新配置的端点
+    web:
+      exposure:
+        include: 'bus-refresh'
+~~~
+
+#### 客户端
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+</dependency>
+~~~
+
+>bootstrap-amqp.yml
+
+增加对RabbitMQ的配置。
+
+~~~yml
+spring:
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: config-server
+spring:
+  rabbitmq: #rabbitmq相关配置
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+~~~
+
+> 忽略CSRF验证
+
+用于测试手动刷新配置，生产环境需拿掉。
+
+~~~java
+@Configuration
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.authorizeRequests().anyRequest().authenticated().and().httpBasic().and().csrf().disable();
+    }
+}
+~~~
+
+#### 测试
+
+启动服务端8901，两个客户端9004/9005。
+
+RabbitMQ：一个springCloudBus交换机，三个springCloudBus.anonymous开头的队列
+
+修改config/config-dev.yml配置文件
+
+服务端刷新配置：
+
+- 刷新所有：POST http://localhost:8901/actuator/bus-refresh Basic Auth
+- 刷新指定客户端：POST http://localhost:8901/actuator/bus-refresh/config-client:9004 Basic Auth
+
+访问http://localhost:9004/configInfo和http://localhost:9005/configInfo查看刷新
+
+#### WebHooks
+
+> Gitee
+
+管理 => WebHooks
+
+URL：http://localhost:8901/actuator/bus-refresh # 需配置为公网IP
+
+事件：Push
+
+当仓库Push时触发刷新配置
+
+### Sleuth
+
+分布式请求链路跟踪。Spring Cloud Sleuth是分布式系统中跟踪服务间调用的工具，可以跟踪客户端的请求，得到该请求调用的服务链路，以帮助我们解决问题。
+
+#### 为服务添加功能
+
+下面将为user-service和ribbon-service添加请求链路跟踪功能的支持。
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-zipkin</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 0.1 #设置Sleuth的抽样收集概率
+~~~
+
+#### 整合ZipKin获取及分析日志
+
+> 下载
+
+https://repo1.maven.org/maven2/io/zipkin/java/zipkin-server/
+
+选择版本：zipkin-server-2.9.4-exec.jar
+
+> 运行
+
+~~~shell
+java -jar zipkin-server-2.9.4-exec.jar
+~~~
+
+> 使用
+
+http://localhost:9411
+
+#### 测试
+
+启动服务：eureka-server:8001、user-service:8201、rabbon-service:8301
+
+多次调用：http://localhost:8301/user/1
+
+#### ES存储日志
+
+> 运行ElasticSearch
+
+安装后`bin/elasticsearch.bat`启动。
+
+> 重新运行zipkin
+
+- STORAGE_TYPE：表示存储类型（ES集群名）
+
+- ES_HOSTS：表示ES的访问地址（ES地址）
+
+~~~shell
+java -jar zipkin-server-2.9.4-exec.jar --STORAGE_TYPE=elasticsearch --ES_HOSTS=localhost:9200 
+~~~
+
+> 重新测试后可以查看ES是否存储了。
+
+### Consul
+
+服务治理与配置中心。Spring Cloud Consul提供了服务治理、配置中心、控制总线等功能。这些功能中的每一个都可以根据需要单独使用，也可以一起使用以构建全方位的服务网格。
+
+- 支持服务治理：Consul作为注册中心。
+- 支持客户端负载均衡：支持Ribbon和Spring Cloud LoadBalancer。
+
+- 支持Zuul。
+- 支持分布式配置管理：Consul作为配置中心。
+- 支持控制总线：通过Control Bus分发事件消息。
+
+#### 下载
+
+下载：https://www.consul.io/downloads.html
+
+~~~shell
+# cd到解压后的目录
+
+# 查看版本
+consul --version
+
+# 开发模式：htt://localhost:8500，依赖tcp端口8301
+consul agent -dev
+~~~
+
+#### 注册服务
+
+改造user-service和ribbon-service，将其Eureka更改为Consul。
+
+consul-user-service
+
+consul-ribbon-service
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8206
+spring:
+  application:
+    name: consul-user-service
+  cloud:
+    consul: #Consul服务注册发现配置
+      host: localhost
+      port: 8500
+      discovery:
+        service-name: ${spring.application.name}
+~~~
+
+> 负载均衡
+
+运行consul-user-service（8206、8207）和consul-ribbon-service（8306）
+
+访问http://localhost:8306/user/1
+
+#### 配置中心
+
+consul-config-client
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-consul-config</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  profiles:
+    active: dev
+~~~
+
+> bootstrap.yml
+
+~~~yml
+server:
+  port: 9101
+spring:
+  application:
+    name: consul-config-client
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        serviceName: consul-config-client
+      config:
+        enabled: true #是否启用配置中心功能
+        format: yaml #设置配置值的格式
+        prefix: config #设置配置所在目录
+        profile-separator: ':' #设置配置的分隔符
+        data-key: data #配置key的名字，由于Consul是K/V存储，配置存储在对应K的V中
+~~~
+
+> Controller
+
+~~~java
+@RestController
+@RefreshScope
+public class ConfigClientController {
+
+    @Value("${config.info}")
+    private String configInfo;
+
+    @GetMapping("/configInfo")
+    public String getConfigInfo() {
+        return configInfo;
+    }
+}
+~~~
+
+> Consul
+
+配置key
+
+~~~bash
+config/consul-config-client:dev/data
+~~~
+
+配置value
+
+~~~yml
+config:
+  info: "config info for dev"
+~~~
+
+> 测试
+
+http://localhost:9101/configInfo
+
+Consul自带Control Bus，修改配置文件会自动刷新
+
+### Gateway
+
+新一代API网关，具有强大的智能路由与过滤功能。
+
+- 基于Spring Framework5，Project Reactor和SpringBoot2.0进行构建。
+- 动态路由：能够匹配任何请求属性。
+- 可以对路由指定Predicate（断言）和Filter（过滤器）。
+- 集成Hystrix的断路器、Spring Cloud服务发现功能。
+- 请求限流功能。
+- 支持路径重写。
+
+#### pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+~~~
+
+#### application.yml
+
+~~~yml
+server:
+  port: 9201
+service-url:
+  user-service: http://localhost:8201
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: path_route #路由的ID
+          uri: ${service-url.user-service}/user/{id} #匹配后路由地址
+          predicates: # 断言，路径相匹配的进行路由
+            - Path=/user/{id}
+logging:
+  level:
+    org.springframework.cloud.gateway: debug
+~~~
+
+访问：http://localhost:9201/user/1，将路由到：http://localhost:8201/user/1
+
+routes路由，匹配客户端请求，配置由以下几部分组成：
+
+- id：唯一标识
+- uri：路由后的地址（需使用lb协议才能使用负载均衡和过滤器，例如：lb://user-service）
+- predicates：断言，例如请求头、请求参数等是否匹配。
+- filter：过滤请求，修改请求或响应。
+
+#### Bean方式配置
+
+使用Bean方式配置路由
+
+~~~java
+@Configuration
+public class GatewayConfig {
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+                .route("path_route2", r -> r.path("/user/getByUsername")
+                        .uri("http://localhost:8201/user/getByUsername"))
+                .build();
+    }
+}
+~~~
+
+访问：http://localhost:9201/user/getByUsername?username=macro
+
+将路由到：http://localhost:8201/user/getByUsername?username=macro
+
+#### predicates
+
+> 时效性
+
+After：指定时间之后的请求，生效该路由配置
+
+~~~yml
+predicates:
+  - After=2019-09-24T16:30:00+08:00[Asia/Shanghai]
+~~~
+
+Before：指定时间之前的请求，生效该路由配置
+
+~~~yml
+predicates:
+  - After=2019-09-24T16:30:00+08:00[Asia/Shanghai]
+~~~
+
+Between：指定时间区间的请求，生效该路由配置
+
+~~~yml
+predicates:
+  - Between=2019-09-24T16:30:00+08:00[Asia/Shanghai], 2019-09-25T16:30:00+08:00[Asia/Shanghai]
+~~~
+
+> Cookie
+
+带指定Cookie键值的请求会匹配该路由。
+
+~~~yml
+predicates:
+  - Cookie=username,macro
+~~~
+
+- postman => cookies
+  - domain：localhost
+  - username=macro; Path=/; Expires=Fri, 28 Oct 2022 23:28:02 GMT;
+
+> Header
+
+带指定请求头的请求会匹配该路由。
+
+~~~yml
+predicates:
+  - Header=X-Request-Id, \d+ # 正则表达式一个或多个数值
+~~~
+
+- postman => Headers
+  - key：X-Request-Id
+  - value：123
+
+> Host
+
+带指定Host的请求会匹配该路由。
+
+~~~yml
+predicates:
+  - Host=**.macrozheng.com
+~~~
+
+postman => Headers
+
+- key：Host
+- value：www.macrozheng.com
+
+>Methon
+
+发送指定方法的请求会匹配该路由。
+
+~~~yml
+predicates:
+  - Method=GET
+~~~
+
+> Path
+
+发送指定路径的请求会匹配该路由。
+
+~~~yml
+predicates:
+  - Path=/user/{id}
+~~~
+
+例如：http://localhost:9201/user/1
+
+> Query
+
+带指定查询参数的请求可以匹配该路由。
+
+~~~yml
+predicates:
+  - Query=username
+~~~
+
+例如：http://localhost:9201/user/1?username
+
+> RemoteAddr
+
+从指定ip地址发送的请求可以匹配该路由。
+
+~~~yml
+predicates:
+  - RemoteAddr=192.168.31.1/30
+~~~
+
+ip地址共四段十进制，转二进制后共32位。30表示前30位不变。
+
+所以剩余两位可变范围：192.168.31.252~192.168.31.254的ip可访问
+
+- 11111111.11111111.11111111.111111 11
+
+- 从右到左按位权：1+2+4+8+16+32+64+128
+
+访问http://192.168.31.194:9201/user/1
+
+postman => Headers
+
+- key：remoteAddress
+- value：192.168.31.253
+
+> Weight
+
+Weight=分组, 权重值
+
+group1这组路由，8/(8+2)的请求会被路由到weight_high，2/(8+2)的请求会被路由到weight_low
+
+~~~yml
+- id: weight_high
+  uri: http://localhost:8201/user/2
+  predicates:
+    - Path=/user/2
+    - Weight=group1, 8
+- id: weight_low
+  uri: http://localhost:8202/user/2
+  predicates:
+    - Path=/user/2
+    - Weight=group1, 2
+~~~
+
+多次访问http://localhost:9201/user/2
+
+#### filters
+
+> AddRequestParameter
+
+为Get请求添加参数
+
+~~~yml
+filters:
+  - AddRequestParameter=username, macro
+predicates:
+  - Method=Get
+~~~
+
+访问http://localhost:9201/user/3，路由到http://localhost:8201/user/3?username=macro
+
+> StripPrefix
+
+去除指定数量的路径前缀
+
+~~~yml
+filters:
+  - StripPrefix=2
+~~~
+
+访问：/user-service/user/1，则路由到：/1
+
+> PrefixPath
+
+添加指定路由前缀
+
+~~~yml
+filters:
+  - PrefixPath=/user
+~~~
+
+访问：/1，/user/1
+
+> Retry
+
+对路由请求进行重试，可以根据路由请求返回的HTTP状态码来确定是否进行重试
+
+~~~yml
+filters:
+- name: Retry
+  args:
+    retries: 1 #需要进行重试的次数
+    statuses: BAD_GATEWAY #返回哪个状态码需要进行重试，返回状态码为5XX进行重试
+    backoff:
+      firstBackoff: 10ms
+      maxBackoff: 50ms
+      factor: 2
+      basedOnPreviousValue: false
+~~~
+
+当调用http://localhost:9201/user/111返回500时会进行重试。
+
+#### Hystrix GatewayFilter
+
+Hystrix过滤器允许你将断路器功能添加到网关路由中，使你的服务免受级联故障的影响，并提供服务降级处理。
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+~~~
+
+> Controller
+
+降级处理
+
+~~~java
+@RestController
+public class FallbackController {
+
+    @GetMapping("/fallback")
+    public Object fallback() {
+        Map<String,Object> result = new HashMap<>();
+        result.put("data",null);
+        result.put("message","Get request fallback!");
+        result.put("code",500);
+        return result;
+    }
+}
+~~~
+
+> application.yml
+
+~~~yml
+filters:
+  - name: Hystrix
+    args:
+      name: fallbackcmd
+      fallbackUri: forward:/fallback
+~~~
+
+#### RequestRateLimiter GatewayFilter
+
+请求限流，当请求太多默认会返回HTTP 429。
+
+> pom.xml
+
+通过Redis进行限流。
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+</dependency>
+~~~
+
+> Config
+
+添加限流策略。userKeyResolver根据请求参数username限流，ipKeyResolver根据IP进行限流。
+
+~~~java
+@Configuration
+public class RedisRateLimiterConfig {
+    @Bean
+    @Primary
+    KeyResolver userKeyResolver() {
+        return exchange -> Mono.just(exchange.getRequest().getQueryParams().getFirst("username"));
+    }
+
+    @Bean
+    public KeyResolver ipKeyResolver() {
+        return exchange -> Mono.just(exchange.getRequest().getRemoteAddress().getHostName());
+    }
+}
+~~~
+
+> application.yml
+
+~~~yml
+# 使用Redis来进行限流
+spring:
+  redis:
+    host: localhost
+    password: 123456
+    port: 6379
+
+filters:
+- name: RequestRateLimiter
+  args:
+    redis-rate-limiter.replenishRate: 1 #每秒允许处理的请求数量
+    redis-rate-limiter.burstCapacity: 2 #每秒最大处理的请求数量
+    key-resolver: "#{@ipKeyResolver}" #限流策略，对应策略的Bean
+~~~
+
+#### 注册到Eureka
+
+可配置实现按服务名称路由。
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 9201
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true #开启从注册中心动态创建路由的功能
+          lower-case-service-id: true #使用小写服务名，默认是大写
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+logging:
+  level:
+    org.springframework.cloud.gateway: debug
+~~~
+
+> 测试
+
+访问：http://localhost:9201/user-service/user/1
+
+### Admin
+
+微服务应用监控。Spring Boot Admin可以对SpringBoot应用的各项指标进行监控。除了监控单体应用，还可作为监控中心来使用，与Spring Cloud的注册中心相结合来监控微服务应用。
+
+- 监控应用运行过程中的概览信息。
+- 度量指标信息，比如：JVM、Tomcat及进程信息。
+- 环境变量信息，比如：系统属性、系统环境变量以及应用配置信息。
+- 查看所有创建的Bean信息。
+- 查看应用中的配置信息。
+- 查看应用运行日志信息。
+- 查看可以访问的Web端点。
+- 查看HTTP跟踪信息。
+
+#### admin-server
+
+作为监控中心使用
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-server</artifactId>
+    <version>2.5.3</version>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  application:
+    name: admin-server
+server:
+  port: 9301
+~~~
+
+> 启用
+
+~~~java
+@EnableAdminServer
+~~~
+
+> 监控页
+
+http://localhost:9301
+
+#### admin-client
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>de.codecentric</groupId>
+    <artifactId>spring-boot-admin-starter-client</artifactId>
+    <version>2.3.1</version> <!-- 需与spring-boot版本对应 -->
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  application:
+    name: admin-client
+  boot:
+    admin:
+      client:
+        url: http://localhost:9301 #配置admin-server地址
+server:
+  port: 9305
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+logging:
+  file:
+    name: admin-client.log # 添加开启admin的日志监控
+~~~
+
+#### 注册到Eureka
+
+修改admin-server，整合Eureka后会自动从注册中心获取服务列表，然后挨个获取监控信息。
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8001/eureka/
+~~~
+
+> 启动
+
+~~~java
+@EnableDiscoveryClient
+~~~
+
+admin-client修改同上，需要删除spring.boot.admin配置。
+
+#### 安全认证
+
+修改admin-server
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  application:
+    name: admin-server
+  security: # 配置登录用户名和密码
+    user:
+      name: macro
+      password: 123456
+  boot:  # 不显示admin-server的监控信息
+    admin:
+      discovery:
+        ignored-services: ${spring.application.name}
+~~~
+
+> config
+
+~~~java
+@Configuration
+public class SecuritySecureConfig extends WebSecurityConfigurerAdapter {
+    private final String adminContextPath;
+
+    public SecuritySecureConfig(AdminServerProperties adminServerProperties) {
+        this.adminContextPath = adminServerProperties.getContextPath();
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        SavedRequestAwareAuthenticationSuccessHandler successHandler = new SavedRequestAwareAuthenticationSuccessHandler();
+        successHandler.setTargetUrlParameter("redirectTo");
+        successHandler.setDefaultTargetUrl(adminContextPath + "/");
+
+        http.authorizeRequests()
+                //1.配置所有静态资源和登录页可以公开访问
+                .antMatchers(adminContextPath + "/assets/**").permitAll()
+                .antMatchers(adminContextPath + "/login").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                //2.配置登录和登出路径
+                .formLogin().loginPage(adminContextPath + "/login").successHandler(successHandler).and()
+                .logout().logoutUrl(adminContextPath + "/logout").and()
+                //3.开启http basic支持，admin-client注册时需要使用
+                .httpBasic().and()
+                .csrf()
+                //4.开启基于cookie的csrf保护
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                //5.忽略这些路径的csrf保护以便admin-client注册
+                .ignoringAntMatchers(
+                        adminContextPath + "/instances",
+                        adminContextPath + "/actuator/**"
+                );
+    }
+}
+~~~
+
+> admin-client
+
+认证授权
+
+~~~yml
+boot:
+    admin:
+      client:
+        username: macro
+        password: 123456
+~~~
+
+### Security
+
+Spring Cloud Security为构建安全的SpringBoot应用提供了一系列解决方案，结合Oauth2可以实现单点登录、令牌中继、令牌交换等功能。
+
+#### OAuth2介绍
+
+OAuth 2.0是用于授权的行业标准。
+
+> 术语
+
+- Resource owner（资源拥有者）：拥有该资源的最终用户，他有访问资源的账户密码。
+
+- Resource server（资源服务器）：拥有受保护资源的服务器，如果请求包含正确的访问令牌，可以访问资源。
+
+- Client（客户端）：访问资源的客户端（如浏览器、移动设备等），会使用访问令牌去获取资源服务器的资源。
+- Authorization server（认证服务器）：用于认证用户的服务器，如果客户端认证通过，发放访问资源服务器的令牌。
+
+> 四种授权模式
+
+- Authorization Code（授权码模式）：
+  - 客户端先将用户导向认证服务器，登录后获取授权码，然后进行授权，最后根据授权码获取访问令牌。
+- Implicit（简化模式）：和授权码模式相比，取消了获取授权码的过程，直接获取访问令牌。
+- Resource Owner Password Credentials（密码模式）：
+  - 客户端直接向用户获取用户名和密码，之后想认证服务器获取访问令牌。
+- Client Credentials（客户端模式）：
+  - 客户端直接通过客户端认证（比如client_id和client_secret）从认证服务器获取访问令牌。
+
+#### 认证服务器
+
+oauth2-server
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-oauth2</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-security</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 9401
+spring:
+  application:
+    name: oauth2-server
+~~~
+
+> UserDetailsService
+
+用于加载用户信息
+
+~~~java
+@Service
+public class UserService implements UserDetailsService {
+    private List<User> userList;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @PostConstruct
+    public void initData() {
+        String password = passwordEncoder.encode("123456");
+        userList = new ArrayList<>();
+        userList.add(new User("macro", password, AuthorityUtils.commaSeparatedStringToAuthorityList("admin")));
+        userList.add(new User("andy", password, AuthorityUtils.commaSeparatedStringToAuthorityList("client")));
+        userList.add(new User("mark", password, AuthorityUtils.commaSeparatedStringToAuthorityList("client")));
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        List<User> findUserList = userList.stream().filter(user -> user.getUsername().equals(username)).collect(Collectors.toList());
+        if (!CollectionUtils.isEmpty(findUserList)) {
+            return findUserList.get(0);
+        } else {
+            throw new UsernameNotFoundException("用户名或密码错误");
+        }
+    }
+}
+~~~
+
+> config
+
+认证服务器配置
+
+~~~java
+@Configuration
+@EnableAuthorizationServer
+public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private UserService userService;
+
+    /**
+     * 使用密码模式需要配置
+     */
+    @Override
+    public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
+        endpoints.authenticationManager(authenticationManager)
+                .userDetailsService(userService);
+    }
+
+    @Override
+    public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+        clients.inMemory()
+                .withClient("admin")//配置client_id
+                .secret(passwordEncoder.encode("admin123456"))//配置client_secret
+                .accessTokenValiditySeconds(3600)//配置访问token的有效期
+                .refreshTokenValiditySeconds(864000)//配置刷新token的有效期
+                .redirectUris("http://www.baidu.com")//配置redirect_uri，用于授权成功后跳转
+                .scopes("all")//配置申请的权限范围
+                .authorizedGrantTypes("authorization_code","password");//配置grant_type，表示授权类型
+    }
+}
+~~~
+
+资源服务器配置
+
+~~~java
+@Configuration
+@EnableResourceServer
+public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
+
+    @Override
+    public void configure(HttpSecurity http) throws Exception {
+        http.authorizeRequests()
+                .anyRequest()
+                .authenticated()
+                .and()
+                .requestMatchers()
+                .antMatchers("/user/**");//配置需要保护的资源路径
+    }
+}
+~~~
+
+Security配置
+
+~~~java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Override
+    public void configure(HttpSecurity http) throws Exception {
+        http.csrf()
+                .disable()
+                .authorizeRequests()
+                .antMatchers("/oauth/**", "/login/**", "/logout/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated()
+                .and()
+                .formLogin()
+                .permitAll();
+    }
+}
+~~~
+
+> Controller
+
+测试用的登录接口
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserController {
+    @GetMapping("/getCurrentUser")
+    public Object getCurrentUser(Authentication authentication) {
+        return authentication.getPrincipal();
+    }
+}
+~~~
+
+#### 授权码模式测试
+
+> 登录页授权：
+
+- http://localhost:9401/oauth/authorize?response_type=code&client_id=admin&redirect_uri=http://www.baidu.com&scope=all&state=normal
+- 手动授权
+
+> 登录后重定向到指定地址（redirect_uri），并携带授权码：
+
+- https://www.baidu.com/?code=vSClWE&state=normal
+
+> Basic认证获取访问令牌：
+
+- POST http://localhost:9401/oauth/token
+- Authtorization Basic Auth
+  - username：admin
+  - password：admin123456
+- Body
+  - grant_type=authorization_code
+  - code=vSClWE
+  - client_id=admin
+  - redirect_uri=http://www.baidu.com
+  - scope=all
+
+~~~json
+{
+    "access_token": "1a84dc91-e65c-4c25-8d95-6d613b9e2248",
+    "token_type": "bearer",
+    "expires_in": 3599,
+    "scope": "all"
+}
+~~~
+
+> 请求接口携带token成功访问：
+
+- GET http://localhost:9401/user/getCurrentUser
+- Headers
+  - key：Authorization
+  - value：bearer 1a84dc91-e65c-4c25-8d95-6d613b9e2248
+
+~~~json
+{
+    "password": null,
+    "username": "macro",
+    "authorities": [
+        {
+            "authority": "admin"
+        }
+    ],
+    "accountNonExpired": true,
+    "accountNonLocked": true,
+    "credentialsNonExpired": true,
+    "enabled": true
+}
+~~~
+
+#### 密码模式测试
+
+使用密码请求该地址获取访问令牌
+
+> Basic认证
+
+POST http://localhost:9401/oauth/token
+
+- Authorization Basic Auth
+  - username：admin
+  - password：admin123456
+- Body
+  - grant_type=password
+  - username=andy
+  - password=123456
+  - scope=all
+
+~~~json
+{
+    "access_token": "ddc32833-cd67-4180-8d84-737c376fd614",
+    "token_type": "bearer",
+    "expires_in": 3599,
+    "scope": "all"
+}
+~~~
+
+> 请求接口携带token成功访问：
+
+- GET http://localhost:9401/user/getCurrentUser
+- Headers
+  - key：Authorization
+  - value：bearer ddc32833-cd67-4180-8d84-737c376fd614
+
+~~~json
+{
+    "password": null,
+    "username": "andy",
+    "authorities": [
+        {
+            "authority": "client"
+        }
+    ],
+    "accountNonExpired": true,
+    "accountNonLocked": true,
+    "credentialsNonExpired": true,
+    "enabled": true
+}
+~~~
+
+#### 使用Redis存储令牌
+
+修改oauth2-server
+
+> pom.xml
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+> application.yml
+
+~~~yml
+spring:
+  redis: 
+    password: redis
+~~~
+
+> config
+
+~~~java
+/**
+ * 使用redis存储token的配置
+ */
+@Configuration
+public class RedisTokenStoreConfig {
+
+    @Autowired
+    private RedisConnectionFactory redisConnectionFactory;
+
+    @Bean
+    public TokenStore redisTokenStore (){
+        return new RedisTokenStore(redisConnectionFactory);
+    }
+}
+~~~
+
+修改AuthorizationServerConfig认证服务器配置
+
+~~~java
+@Autowired
+@Qualifier("redisTokenStore")
+private TokenStore tokenStore;
+
+/**
+ * 使用密码模式需要配置
+ */
+@Override
+public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
+    endpoints.authenticationManager(authenticationManager)
+        .userDetailsService(userService)
+        .tokenStore(tokenStore);//配置令牌存储策略
+}
+~~~
+
+> 测试
+
+密码模式测试
+
+查看redis是否存储
+
+#### 使用JWT存储令牌
+
+> config
+
+~~~java
+/**
+ * 使用Jwt存储token的配置
+ */
+@Configuration
+public class JwtTokenStoreConfig {
+
+    @Bean
+    public TokenStore jwtTokenStore() {
+        return new JwtTokenStore(jwtAccessTokenConverter());
+    }
+
+    @Bean
+    public JwtAccessTokenConverter jwtAccessTokenConverter() {
+        JwtAccessTokenConverter accessTokenConverter = new JwtAccessTokenConverter();
+        accessTokenConverter.setSigningKey("test_key");//配置JWT使用的秘钥
+        return accessTokenConverter;
+    }
+}
+~~~
+
+修改AuthorizationServerConfig认证服务器配置
+
+~~~java
+@Autowired
+@Qualifier("jwtTokenStore")
+private TokenStore tokenStore;
+@Autowired
+private JwtAccessTokenConverter jwtAccessTokenConverter;
+@Autowired
+private JwtTokenEnhancer jwtTokenEnhancer;
+
+/**
+ * 使用密码模式需要配置
+ */
+@Override
+public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
+    endpoints.authenticationManager(authenticationManager)
+        .userDetailsService(userService)
+        .tokenStore(tokenStore) //配置令牌存储策略
+        .accessTokenConverter(jwtAccessTokenConverter);
+}
+~~~
+
+> 测试
+
+密码模式测试
+
+授权：http://localhost:9401/oauth/token
+
+~~~json
+{
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX25hbWUiOiJhbmR5Iiwic2NvcGUiOlsiYWxsIl0sImV4cCI6MTYzNTc2OTIwMywiYXV0aG9yaXRpZXMiOlsiY2xpZW50Il0sImp0aSI6IjI2MWZlYTY1LWQxZWItNDQ0Yi1iNGEwLTA3YzIyNzU1NjRkZiIsImNsaWVudF9pZCI6ImFkbWluIiwiZW5oYW5jZSI6ImVuaGFuY2UgaW5mbyJ9.jnFcGE0reSbmA6uGLFt1IEeUgo84MwRYU2zeqGPH8oc",
+    "token_type": "bearer",
+    "expires_in": 3599,
+    "scope": "all",
+    "enhance": "enhance info",
+    "jti": "261fea65-d1eb-444b-b4a0-07c2275564df"
+}
+~~~
+
+http://localhost:9401/user/getCurrentUser
+
+~~~json
+{
+    "user_name": "andy",
+    "scope": [
+        "all"
+    ],
+    "exp": 1635769203,
+    "authorities": [
+        "client"
+    ],
+    "jti": "261fea65-d1eb-444b-b4a0-07c2275564df",
+    "client_id": "admin",
+    "enhance": "enhance info"
+}
+~~~
+
+> 扩展JWT内容
+
+~~~java
+/**
+ * Jwt内容增强器
+ */
+public class JwtTokenEnhancer implements TokenEnhancer {
+    @Override
+    public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
+        Map<String, Object> info = new HashMap<>();
+        info.put("enhance", "enhance info");
+        ((DefaultOAuth2AccessToken) accessToken).setAdditionalInformation(info);
+        return accessToken;
+    }
+}
+~~~
+
+修改JWT配置（JwtTokenStoreConfig）
+
+~~~java
+@Bean
+public JwtTokenEnhancer jwtTokenEnhancer() {
+    return new JwtTokenEnhancer();
+}
+~~~
+
+修改AuthorizationServerConfig认证服务器配置
+
+~~~java
+/**
+ * 使用密码模式需要配置
+ */
+@Override
+public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
+    TokenEnhancerChain enhancerChain = new TokenEnhancerChain();
+    List<TokenEnhancer> delegates = new ArrayList<>();
+    delegates.add(jwtTokenEnhancer); //配置JWT的内容增强器
+    delegates.add(jwtAccessTokenConverter);
+    enhancerChain.setTokenEnhancers(delegates);
+    endpoints.authenticationManager(authenticationManager)
+        .userDetailsService(userService)
+        .tokenStore(tokenStore) //配置令牌存储策略
+        .accessTokenConverter(jwtAccessTokenConverter)
+        .tokenEnhancer(enhancerChain);
+}
+~~~
+
+#### 解析JWT
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt</artifactId>
+    <version>0.9.0</version>
+</dependency>
+~~~
+
+> Controller
+
+获取请求中的token，解析并返回。
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserController {
+    @GetMapping("/getCurrentUser")
+    public Object getCurrentUser(Authentication authentication, HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = StrUtil.subAfter(header, "bearer ", false);
+        return Jwts.parser()
+                .setSigningKey("test_key".getBytes(StandardCharsets.UTF_8))
+                .parseClaimsJws(token)
+                .getBody();
+    }
+}
+~~~
+
+#### 刷新令牌
+
+修改AuthorizationServerConfig认证服务器配置
+
+~~~java
+@Override
+public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+    clients.inMemory()
+        .withClient("admin")
+        .secret(passwordEncoder.encode("admin123456"))
+        .accessTokenValiditySeconds(3600)
+        .refreshTokenValiditySeconds(864000)
+        .redirectUris("http://www.baidu.com")
+        .autoApprove(true) //自动授权配置
+        .scopes("all")
+        .authorizedGrantTypes("authorization_code","password","refresh_token"); //添加授权模式
+}
+~~~
+
+> 测试
+
+- POST http://localhost:9401/oauth/token
+- Authorization Basic Auth
+  - username：admin
+  - password：admin123456
+- Body
+  - grant_type=refresh_token
+  - refresh_token=xxxxxxxxxxxxxxxx
+
+#### 单点登录
+
+单点登录（Single Sign On）指的是当有多个系统需要登录时，用户只需要登录一个系统，就可以访问其他需要登录的系统而无需登录。
+
+##### oauth2-client
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-oauth2</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-security</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt</artifactId>
+    <version>0.9.0</version>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 9501
+  servlet:
+    session:
+      cookie:
+        name: OAUTH2-CLIENT-SESSIONID #防止Cookie冲突，冲突会导致登录验证不通过
+oauth2-server-url: http://localhost:9401
+spring:
+  application:
+    name: oauth2-client
+security:
+  oauth2: #与oauth2-server对应的配置
+    client:
+      client-id: admin
+      client-secret: admin123456
+      user-authorization-uri: ${oauth2-server-url}/oauth/authorize
+      access-token-uri: ${oauth2-server-url}/oauth/token
+    resource:
+      jwt:
+        key-uri: ${oauth2-server-url}/oauth/token_key
+~~~
+
+> 启动
+
+~~~java
+@EnableOAuth2Sso
+~~~
+
+> Controller
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @GetMapping("/getCurrentUser")
+    public Object getCurrentUser(Authentication authentication) {
+        return authentication;
+    }
+}
+~~~
+
+##### oauth2-server
+
+> config
+
+修改AuthorizationServerConfig认证服务器配置
+
+~~~java
+@Override
+public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+    clients.inMemory()
+        .withClient("admin")
+        .secret(passwordEncoder.encode("admin123456"))
+        .accessTokenValiditySeconds(3600)
+        .refreshTokenValiditySeconds(864000)
+        // .redirectUris("http://www.baidu.com")
+        .redirectUris("http://localhost:9501/login") //单点登录时配置
+        .autoApprove(true) // 自动授权配置
+        .scopes("all")
+        .authorizedGrantTypes("authorization_code","password","refresh_token");
+}
+
+@Override
+public void configure(AuthorizationServerSecurityConfigurer security) {
+    security.tokenKeyAccess("isAuthenticated()"); // 获取密钥需要身份认证，使用单点登录时必须配置
+}
+~~~
+
+##### 测试
+
+访问http://localhost:9501/user/getCurrentUser跳到授权页自动授权
+
+- Authorization Oauth2
+  - Token Name：sso
+  - Gant Type：Authorization Code
+  - Callback URL：http://localhost:9501/login
+  - Auth URL：http://localhost:9401/oauth/authorize
+  - Access Token URL：http://localhost:9401/oauth/token
+  - Client ID：admin
+  - Client Secret：admin123456
+  - Scope：all
+  - State：normal
+  - Client Authentication：Send as Basic Auth header
+- Get New Access Token
+- Use Token
+- Send
+
+##### oauth2-client添加权限校验
+
+> config
+
+~~~java
+@Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+@Order(101)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+}
+~~~
+
+> Controller
+
+需admin权限
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserController {
+
+    @PreAuthorize("hasAuthority('admin')")
+    @GetMapping("/auth/admin")
+    public Object adminAuth() {
+        return "Has admin auth!";
+    }
+}
+~~~
+
+### Alibaba Nacos
+
+可作为注册中心和配置中心使用。
+
+- 服务发现和服务健康监测：支持基于DNS和基于RPC的服务发现，支持对服务的实时的健康检查，阻止向不健康的主机或服务实例发送请求；
+- 动态配置服务：动态配置服务可以让您以中心化、外部化和动态化的方式管理所有环境的应用配置和服务配置；
+- 动态 DNS 服务：动态 DNS 服务支持权重路由，让您更容易地实现中间层负载均衡、更灵活的路由策略、流量控制以及数据中心内网的简单DNS解析服务；
+- 服务及其元数据管理：支持从微服务平台建设的视角管理数据中心的所有服务及元数据。
+
+#### 运行Nacos服务端
+
+> 下载
+
+https://github.com/alibaba/nacos/releases
+
+> bin/startup.cmd
+
+指定java版本
+
+~~~cmd
+set JAVA_HOME=C:\Program Files\Java\jdk1.8.0_144
+~~~
+
+> 数据库
+
+创建nacos数据库，执行conf/nacos-mysql.sql
+
+conf/application.properties
+
+~~~
+spring.datasource.platform=mysql
+db.num=1
+db.url.0=jdbc:mysql://127.0.0.1:3306/nacos?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC
+db.user=root
+db.password=root
+~~~
+
+bin/startup.cmd运行
+
+> 访问
+
+http://localhost:8848/nacos
+
+账号和密码：nacos
+
+#### 注册中心
+
+将换成nacos服务发现
+
+> pom.xml
+
+~~~xml
+<dependencies>
+	<dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+    </dependency>
+</dependencies>
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+            <version>2.1.0.RELEASE</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848 #配置Nacos地址
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+~~~
+
+#### 配置中心
+
+使用nacos配置中心的配置
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  profiles:
+    active: dev
+~~~
+
+> boostrap.yml
+
+~~~yml
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848 #Nacos地址
+      config:
+        server-addr: localhost:8848 #Nacos地址
+        file-extension: yaml #这里我们获取的yaml格式的配置
+~~~
+
+> Controller
+
+~~~java
+@RestController
+@RefreshScope
+public class ConfigClientController {
+
+    @Value("${config.info}")
+    private String configInfo;
+
+    @GetMapping("/configInfo")
+    public String getConfigInfo() {
+        return configInfo;
+    }
+}
+~~~
+
+> 配置格式
+
+key，例如：nacos-config-client-dev.yaml
+
+~~~
+${spring.application.name}-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}
+~~~
+
+value：
+
+```yaml
+config:
+  info: "config info for dev"
+```
+
+测试：http://localhost:9101/configInfo
+
+### Alibaba Sentinel
+
+熔断与限流。Sentinel以流量为切入点，从流量控制、熔断降级、系统负载保护等多个维度保护服务的稳定性。
+
+- 丰富的应用场景：如秒杀，可以实时熔断下游不可应用。
+- 完备的实时监控：提供实时的监控功能，可以在控制台中看到接入应用的单台机器秒级数据，甚至500台规模的集群的汇总运行情况。
+- 广泛的开源生态：提供开箱即用的与其它开源框架/库的整合模块，例如Spring Cloud、Dubbo、gRPC等。
+- 完善的SPI扩展点：提供简单易用、完善的SPI扩展点。
+
+#### 运行Sentinel
+
+> 下载
+
+https://github.com/alibaba/Sentinel/releases
+
+> 访问
+
+http://localhost:8080
+
+#### 限流
+
+给服务添加熔断与限流
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+server:
+  port: 8401
+spring:
+  application:
+    name: sentinel-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848 #配置Nacos地址
+    sentinel:
+      transport:
+        dashboard: localhost:8080 #配置sentinel dashboard地址
+        port: 8719
+service-url:
+  user-service: http://nacos-user-service
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+~~~
+
+> 限流
+
+Sentinel默认为所有的HTTP服务提供了限流埋点，可以通过@SentinelResource自定义限流行为。
+
+~~~java
+/**
+ * 限流功能
+ */
+@RestController
+@RequestMapping("/rateLimit")
+public class RateLimitController {
+
+    /**
+     * 按资源名称限流，需要指定限流处理逻辑
+     */
+    @GetMapping("/byResource")
+    @SentinelResource(value = "byResource",blockHandler = "handleException")
+    public CommonResult byResource() {
+        return new CommonResult("按资源名称限流", 200);
+    }
+
+    /**
+     * 按URL限流，有默认的限流处理逻辑
+     */
+    @GetMapping("/byUrl")
+    @SentinelResource(value = "byUrl",blockHandler = "handleException")
+    public CommonResult byUrl() {
+        return new CommonResult("按url限流", 200);
+    }
+
+    public CommonResult handleException(BlockException exception){
+        return new CommonResult(exception.getClass().getCanonicalName(),200);
+    }
+
+}
+~~~
+
+value根据资源名限流
+
+> 自定义限流
+
+处理逻辑
+
+~~~java
+public class CustomBlockHandler {
+
+    public CommonResult handleException(BlockException exception){
+        return new CommonResult("自定义限流信息",200);
+    }
+}
+~~~
+
+使用
+
+~~~java
+@RestController
+@RequestMapping("/rateLimit")
+public class RateLimitController {
+
+    /**
+     * 自定义通用的限流处理逻辑
+     */
+    @GetMapping("/customBlockHandler")
+    @SentinelResource(value = "customBlockHandler", blockHandler = "handleException",blockHandlerClass = CustomBlockHandler.class)
+    public CommonResult blockHandler() {
+        return new CommonResult("限流成功", 200);
+    }
+}
+~~~
+
+#### 熔断（RestTemplate）
+
+> SentinelRestTemplate
+
+~~~java
+@Configuration
+public class RibbonConfig {
+
+    @Bean
+    @SentinelRestTemplate
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+~~~
+
+> Controller
+
+~~~java
+/**
+ * 熔断功能
+ */
+@RestController
+@RequestMapping("/breaker")
+public class CircleBreakerController {
+
+    private Logger LOGGER = LoggerFactory.getLogger(CircleBreakerController.class);
+    @Autowired
+    private RestTemplate restTemplate;
+    @Value("${service-url.user-service}")
+    private String userServiceUrl;
+
+    @RequestMapping("/fallback/{id}")
+    @SentinelResource(value = "fallback",fallback = "handleFallback")
+    public CommonResult fallback(@PathVariable Long id) {
+        return restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+    }
+
+    @RequestMapping("/fallbackException/{id}")
+    @SentinelResource(value = "fallbackException",fallback = "handleFallback2", exceptionsToIgnore = {NullPointerException.class})
+    public CommonResult fallbackException(@PathVariable Long id) {
+        if (id == 1) {
+            throw new IndexOutOfBoundsException();
+        } else if (id == 2) {
+            throw new NullPointerException();
+        }
+        return restTemplate.getForObject(userServiceUrl + "/user/{1}", CommonResult.class, id);
+    }
+
+    public CommonResult handleFallback(Long id) {
+        User defaultUser = new User(-1L, "defaultUser", "123456");
+        return new CommonResult<>(defaultUser,"服务降级返回",200);
+    }
+
+    public CommonResult handleFallback2(@PathVariable Long id, Throwable e) {
+        LOGGER.error("handleFallback2 id:{},throwable class:{}", id, e.getClass());
+        User defaultUser = new User(-2L, "defaultUser2", "123456");
+        return new CommonResult<>(defaultUser,"服务降级返回",200);
+    }
+}
+~~~
+
+> 测试
+
+#### 熔断（OpenFeign）
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+feign:
+  sentinel:
+    enabled: true #打开sentinel对feign的支持
+~~~
+
+> 启动
+
+~~~java
+@EnableFeignClients
+~~~
+
+> 降级
+
+~~~java
+@FeignClient(value = "nacos-user-service",fallback = UserFallbackService.class)
+public interface UserService {
+    @PostMapping("/user/create")
+    CommonResult create(@RequestBody User user);
+
+    @GetMapping("/user/{id}")
+    CommonResult<User> getUser(@PathVariable Long id);
+
+    @GetMapping("/user/getByUsername")
+    CommonResult<User> getByUsername(@RequestParam String username);
+
+    @PostMapping("/user/update")
+    CommonResult update(@RequestBody User user);
+
+    @PostMapping("/user/delete/{id}")
+    CommonResult delete(@PathVariable Long id);
+}
+~~~
+
+~~~java
+@Component
+public class UserFallbackService implements UserService {
+    @Override
+    public CommonResult create(User user) {
+        User defaultUser = new User(-1L, "defaultUser", "123456");
+        return new CommonResult<>(defaultUser,"服务降级返回",200);
+    }
+
+    @Override
+    public CommonResult<User> getUser(Long id) {
+        User defaultUser = new User(-1L, "defaultUser", "123456");
+        return new CommonResult<>(defaultUser,"服务降级返回",200);
+    }
+
+    @Override
+    public CommonResult<User> getByUsername(String username) {
+        User defaultUser = new User(-1L, "defaultUser", "123456");
+        return new CommonResult<>(defaultUser,"服务降级返回",200);
+    }
+
+    @Override
+    public CommonResult update(User user) {
+        return new CommonResult("调用失败，服务被降级",500);
+    }
+
+    @Override
+    public CommonResult delete(Long id) {
+        return new CommonResult("调用失败，服务被降级",500);
+    }
+}
+~~~
+
+~~~java
+@RestController
+@RequestMapping("/user")
+public class UserFeignController {
+    @Autowired
+    private UserService userService;
+
+    @GetMapping("/{id}")
+    public CommonResult getUser(@PathVariable Long id) {
+        return userService.getUser(id);
+    }
+
+    @GetMapping("/getByUsername")
+    public CommonResult getByUsername(@RequestParam String username) {
+        return userService.getByUsername(username);
+    }
+
+    @PostMapping("/create")
+    public CommonResult create(@RequestBody User user) {
+        return userService.create(user);
+    }
+
+    @PostMapping("/update")
+    public CommonResult update(@RequestBody User user) {
+        return userService.update(user);
+    }
+
+    @PostMapping("/delete/{id}")
+    public CommonResult delete(@PathVariable Long id) {
+        return userService.delete(id);
+    }
+}
+~~~
+
+#### Nacos存储规则
+
+默认情况下，当我们在Sentinel控制台中配置规则时，控制台推送规则方式是通过API将规则推送至客户端并直接更新到内存中。一但我们重启应用，规则将消失。
+
+> pom.xml
+
+~~~xml
+<dependency>
+    <groupId>com.alibaba.csp</groupId>
+    <artifactId>sentinel-datasource-nacos</artifactId>
+</dependency>
+~~~
+
+> application.yml
+
+~~~yml
+spring:
+  cloud:
+    sentinel:
+      datasource:
+        ds1:
+          nacos:
+            server-addr: localhost:8848
+            dataId: ${spring.application.name}-sentinel
+            groupId: DEFAULT_GROUP
+            data-type: json
+            rule-type: flow
+~~~
+
+> Nacos配置
+
+Data ID：sentinel-service-sentinel
+
+Group：DEFAULT_GROUP
+
+格式：JSON
+
+~~~json
+[
+    {
+        "resource": "/rateLimit/byUrl",
+        "limitApp": "default",
+        "grade": 1,
+        "count": 1,
+        "strategy": 0,
+        "controlBehavior": 0,
+        "clusterMode": false
+    }
+]
+~~~
+
+- resource：资源名称。
+- limitApp：来源应用。
+- grade：阈值类型，0表示线程数，1表示QPS。
+- count：单机阈值。
+- strategy：流程模式，0表示直接，1表示关联，2表示链路。
+- controlBehavior：流控效果，0表示快速失败，1表示Warm Up，2表示排队等待。
+- clusterMode：是否集群。
+
+### Seata
+
+分布式事务。在微服务架构中由于全局数据一致性没法保证生产的问题是分布式事务问题。简单来说，一次业务操作需要操作多个数据源或需要进行远程调用，就会产生分布式事务问题。
+
+Seata是一款的分布式事务解决方案，提供了AT、TCC、SAGA和XA事务模式，为用户打造一站式的分布式解决方案。
+
+- Transaction Coordinator（TC）：事务协调器，维护全局事务的运行状态，负责协调并驱动全局事务的提交或回滚。
+- Transaction Manager（TM）：控制全局事务的边界，负责开启一个全局事务，并最终发起全局提交或全局回滚的决议。
+- Resource Manager（RM）：控制分支事务，负责分支注册、状态汇报，并接收事务协调器的指令，驱动分支（本地）事务的提交和回滚。
+
+> 事务过程
+
+- TM想TC申请开启一个全局事务，全局事务创建成功并生成一个全局唯一的XID。
+- XID在微服务调用链路的上下文中传播。
+- RM向TC注册分支事务，将其纳入XID对应全局事务的管辖。
+- TM向TC发起对XIDI的全局提交或回滚决议。
+- TC调度XID下管辖的全部分支事务完成提交或回滚请求。
+
+#### seata-server运行
+
+> 下载
+
+https://github.com/seata/seata/releases
+
+> 配置（/conf/file.conf）
+
+主要修改自定义事务组名称、事务日志存储模式为db及数据库连接信息。
+
+~~~bash
+service {
+  #vgroup->rgroup
+  vgroup_mapping.fsp_tx_group = "default" #修改事务组名称为：fsp_tx_group，和客户端自定义的名称对应
+  #only support single node
+  default.grouplist = "127.0.0.1:8091"
+  #degrade current not support
+  enableDegrade = false
+  #disable
+  disable = false
+  #unit ms,s,m,h,d represents milliseconds, seconds, minutes, hours, days, default permanent
+  max.commit.retry.timeout = "-1"
+  max.rollback.retry.timeout = "-1"
+}
+
+## transaction log store
+store {
+  ## store mode: file、db
+  mode = "db" #修改此处将事务信息存储到数据库中
+
+  ## database store
+  db {
+    ## the implement of javax.sql.DataSource, such as DruidDataSource(druid)/BasicDataSource(dbcp) etc.
+    datasource = "dbcp"
+    ## mysql/oracle/h2/oceanbase etc.
+    db-type = "mysql"
+    driver-class-name = "com.mysql.jdbc.Driver"
+    url = "jdbc:mysql://localhost:3306/seat-server" #修改数据库连接地址
+    user = "root" #修改数据库用户名
+    password = "root" #修改数据库密码
+    min-conn = 1
+    max-conn = 3
+    global.table = "global_table"
+    branch.table = "branch_table"
+    lock-table = "lock_table"
+    query-limit = 100
+  }
+}
+~~~
+
+存储日志需创建数据库seata-server数据库，建表语句`/conf/db_store.sql`
+
+> 配置注册中心（/conf/registry.conf）
+
+指明nacos作为注册中心。
+
+~~~bash
+registry {
+  # file 、nacos 、eureka、redis、zk、consul、etcd3、sofa
+  type = "nacos" #改为nacos
+
+  nacos {
+    serverAddr = "localhost:8848" #改为nacos的连接地址
+    namespace = ""
+    cluster = "default"
+  }
+}
+~~~
+
+> 启动
+
+`/bin/seata-server.bat`
+
+#### 数据库
+
+- seat-order
+
+~~~sql
+CREATE TABLE `order` (
+  `id` bigint(11) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(11) DEFAULT NULL COMMENT '用户id',
+  `product_id` bigint(11) DEFAULT NULL COMMENT '产品id',
+  `count` int(11) DEFAULT NULL COMMENT '数量',
+  `money` decimal(11,0) DEFAULT NULL COMMENT '金额',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
+
+ALTER TABLE `order` ADD COLUMN `status` int(1) DEFAULT NULL COMMENT '订单状态：0：创建中；1：已完结' AFTER `money` ;
+~~~
+
+- seat-account
+
+~~~sql
+CREATE TABLE `storage` (
+                         `id` bigint(11) NOT NULL AUTO_INCREMENT,
+                         `product_id` bigint(11) DEFAULT NULL COMMENT '产品id',
+                         `total` int(11) DEFAULT NULL COMMENT '总库存',
+                         `used` int(11) DEFAULT NULL COMMENT '已用库存',
+                         `residue` int(11) DEFAULT NULL COMMENT '剩余库存',
+                         PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+
+INSERT INTO `seat-storage`.`storage` (`id`, `product_id`, `total`, `used`, `residue`) VALUES ('1', '1', '100', '0', '100');
+~~~
+
+- seat-storage
+
+~~~sql
+CREATE TABLE `account` (
+  `id` bigint(11) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `user_id` bigint(11) DEFAULT NULL COMMENT '用户id',
+  `total` decimal(10,0) DEFAULT NULL COMMENT '总额度',
+  `used` decimal(10,0) DEFAULT NULL COMMENT '已用余额',
+  `residue` decimal(10,0) DEFAULT '0' COMMENT '剩余可用额度',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+
+INSERT INTO `seat-account`.`account` (`id`, `user_id`, `total`, `used`, `residue`) VALUES ('1', '1', '1000', '0', '1000');
+~~~
+
+> 需为每个数据库中创建日志回滚表
+
+`/conf/db_undo_log.sql`
+
+#### 客户端配置
+
+> application.yml
+
+~~~yml
+spring:
+  cloud:
+    alibaba:
+      seata:
+        tx-service-group: fsp_tx_group #自定义事务组名称需要与seata-server中的对应
+~~~
+
+> file.conf
+
+自定义事务组名称
+
+~~~bash
+service {
+  #vgroup->rgroup
+  vgroup_mapping.fsp_tx_group = "default" #修改自定义事务组名称
+  #only support single node
+  default.grouplist = "127.0.0.1:8091"
+  #degrade current not support
+  enableDegrade = false
+  #disable
+  disable = false
+  #unit ms,s,m,h,d represents milliseconds, seconds, minutes, hours, days, default permanent
+  max.commit.retry.timeout = "-1"
+  max.rollback.retry.timeout = "-1"
+  disableGlobalTransaction = false
+}
+~~~
+
+> registry.conf
+
+注册中心
+
+~~~bash
+registry {
+  # file 、nacos 、eureka、redis、zk
+  type = "nacos" #修改为nacos
+
+  nacos {
+    serverAddr = "localhost:8848" #修改为nacos的连接地址
+    namespace = ""
+    cluster = "default"
+  }
+}
+~~~
+
+> Application.java
+
+取消数据源自动创建
+
+~~~java
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+~~~
+
+> config
+
+使用seate对数据源进行代理
+
+~~~java
+/**
+ * 使用Seata对数据源进行代理
+ * Created by macro on 2019/11/11.
+ */
+@Configuration
+public class DataSourceProxyConfig {
+
+    @Value("${mybatis.mapperLocations}")
+    private String mapperLocations;
+
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource")
+    public DataSource druidDataSource(){
+        return new DruidDataSource();
+    }
+
+    @Bean
+    public DataSourceProxy dataSourceProxy(DataSource dataSource) {
+        return new DataSourceProxy(dataSource);
+    }
+
+    @Bean
+    public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) throws Exception {
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(dataSourceProxy);
+        sqlSessionFactoryBean.setMapperLocations(new PathMatchingResourcePatternResolver()
+                .getResources(mapperLocations));
+        sqlSessionFactoryBean.setTransactionFactory(new SpringManagedTransactionFactory());
+        return sqlSessionFactoryBean.getObject();
+    }
+
+}
+~~~
+
+> Service
+
+@GlobalTransactional # 开启事务
+
+- name = "fsp-create-order" # 事务名称
+- rollbackFor = Exception.class # 触发回滚的异常
+
+~~~java
+/**
+ * 订单业务实现类
+ */
+@Service
+public class OrderServiceImpl implements OrderService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OrderServiceImpl.class);
+
+    @Autowired
+    private OrderDao orderDao;
+    @Autowired
+    private StorageService storageService;
+    @Autowired
+    private AccountService accountService;
+
+    /**
+     * 创建订单->调用库存服务扣减库存->调用账户服务扣减账户余额->修改订单状态
+     */
+    @Override
+    @GlobalTransactional(name = "fsp-create-order",rollbackFor = Exception.class)
+    public void create(Order order) {
+        LOGGER.info("------->下单开始");
+        //本应用创建订单
+        orderDao.create(order);
+
+        //远程调用库存服务扣减库存
+        LOGGER.info("------->order-service中扣减库存开始");
+        storageService.decrease(order.getProductId(),order.getCount());
+        LOGGER.info("------->order-service中扣减库存结束:{}",order.getId());
+
+        //远程调用账户服务扣减余额
+        LOGGER.info("------->order-service中扣减余额开始");
+        accountService.decrease(order.getUserId(),order.getMoney());
+        LOGGER.info("------->order-service中扣减余额结束");
+
+        //修改订单状态为已完成
+        LOGGER.info("------->order-service中修改订单状态开始");
+        orderDao.update(order.getUserId(),0);
+        LOGGER.info("------->order-service中修改订单状态结束");
+
+        LOGGER.info("------->下单结束");
+    }
+}
+~~~
+
+~~~java
+/**
+ * 账户业务实现类
+ */
+@Service
+public class AccountServiceImpl implements AccountService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AccountServiceImpl.class);
+    @Autowired
+    private AccountDao accountDao;
+
+    /**
+     * 扣减账户余额
+     */
+    @Override
+    public void decrease(Long userId, BigDecimal money) {
+        LOGGER.info("------->account-service中扣减账户余额开始");
+        //模拟超时异常，全局事务回滚
+        try {
+            Thread.sleep(30*1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        accountDao.decrease(userId,money);
+        LOGGER.info("------->account-service中扣减账户余额结束");
+    }
+}
+~~~
+
+### Swagger
 
 
 
