@@ -1,5 +1,5 @@
 * [Home]()
-* java
+* Java
   * [Mall](/Mall/)
   * [Java](/Java/)
   * [JUC](/JUC/)
