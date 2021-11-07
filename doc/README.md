@@ -14,7 +14,7 @@
 
 > 下面是我列出的笔记索引：
 
-* java
+* Java
   * [Mall](/Mall/)
   * [Java](/Java/)
   * [JUC](/JUC/)
