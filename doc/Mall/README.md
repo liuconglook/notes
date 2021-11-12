@@ -1728,6 +1728,43 @@ https://www.jianshu.com/p/c488709d6430
 
 > my-template
 
+.meta.xml
+
+~~~xml
+<?xml version="1.0" encoding="utf-8" ?>
+<templates>
+    <template>
+        <!-- 注意: 实体类无论如何都会生成 -->
+        <!--domain 如果勾选则覆盖默认实体类生成规则-->
+        <property name="configName" value="domain"/>
+        <property name="configFile" value="domain.ftl"/>
+        <property name="fileName" value="${domain.fileName}"/>
+        <property name="suffix" value=".java"/>
+        <property name="packageName" value="${domain.basePackage}.model"/>
+        <property name="encoding" value="UTF-8"/>
+        <property name="basePath" value="${domain.basePath}"/>
+    </template>
+    <template>
+        <property name="configName" value="mapperInterface"/>
+        <property name="configFile" value="mapperInterface.ftl"/>
+        <property name="fileName" value="${domain.fileName}Mapper"/>
+        <property name="suffix" value=".java"/>
+        <property name="packageName" value="${domain.basePackage}.mapper"/>
+        <property name="encoding" value="UTF-8"/>
+        <property name="basePath" value="${domain.basePath}"/>
+    </template>
+    <template>
+        <property name="configName" value="mapperXml"/>
+        <property name="configFile" value="mapperXml.ftl"/>
+        <property name="fileName" value="${domain.fileName}Mapper"/>
+        <property name="suffix" value=".xml"/>
+        <property name="packageName" value="mapper"/>
+        <property name="encoding" value="UTF-8"/>
+        <property name="basePath" value="src/main/resources/${domain.basePath}"/>
+    </template>
+</templates>
+~~~
+
 domain.ftl
 
 ~~~java
