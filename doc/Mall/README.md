@@ -1726,6 +1726,94 @@ http://www.kerneler.com/freemarker2.3.23/ref_builtins_string.html
 
 https://www.jianshu.com/p/c488709d6430
 
+> my-template
+
+domain.ftl
+
+~~~java
+package ${domain.packageName};
+
+<#list tableClass.allFields as field>
+    <#if !field.fullTypeName?starts_with("java.lang") && !(field.columnIsArray)>
+import ${field.fullTypeName};
+    </#if>
+</#list>
+import com.baomidou.mybatisplus.annotation.IdType;
+import org.hibernate.validator.constraints.Length;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
+
+/**
+* ${tableClass.remark!}
+* @TableName ${tableClass.tableName}
+*/
+@Schema(description = "${tableClass.remark!}")
+@TableName(value = "${tableClass.tableName}")
+@Getter
+@Setter
+@ToString
+public class ${tableClass.shortClassName} {
+
+<#list tableClass.allFields as field>
+
+    /**
+    * ${field.remark!}
+    */<#if field.autoIncrement>${"\n    "}@TableId(value = "${field.columnName}", type = IdType.NONE)</#if>
+    @Schema(description = "${field.remark!}")<#if field.jdbcType=="VARCHAR">${"\n    "}@Length(max= ${field.columnLength},message="编码长度不能超过${field.columnLength}")</#if>
+    private ${field.shortTypeName} <#if field.fieldName?index_of("_") != -1>${field.fieldName?keep_before("_") + field.fieldName?keep_after("_")?capitalize?replace("_", "")}</#if><#if field.fieldName?index_of("_") == -1>${field.fieldName}</#if>;
+</#list>
+}
+~~~
+
+mapperInterface.ftl
+
+~~~java
+package ${mapperInterface.packageName};
+
+import ${tableClass.fullClassName};
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.belean.mall.tiny.config.mybatis.MybatisRedisCache;
+import org.apache.ibatis.annotations.CacheNamespace;
+
+/**
+ * @Entity ${tableClass.fullClassName}
+ */
+@CacheNamespace(implementation = MybatisRedisCache.class)
+public interface ${mapperInterface.fileName} extends BaseMapper<${tableClass.shortClassName}> {
+}
+~~~
+
+mapperXml.ftl
+
+~~~java
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="${mapperInterface.packageName}.${baseInfo.fileName}">
+
+    <resultMap id="BaseResultMap" type="${tableClass.fullClassName}">
+    <#list tableClass.pkFields as field>
+        <id property="${field.fieldName}" column="${field.columnName}" jdbcType="${field.jdbcType}"/>
+    </#list>
+    <#list tableClass.baseFields as field>
+    <#if field.fieldName?index_of("_") != -1>
+        <result property="${field.fieldName?keep_before("_") + field.fieldName?keep_after("_")?capitalize?replace("_", "")}" column="${field.columnName}" jdbcType="${field.jdbcType}"/>
+    </#if>
+    <#if field.fieldName?index_of("_") == -1>
+        <result property="${field.fieldName}" column="${field.columnName}" jdbcType="${field.jdbcType}"/>
+    </#if>
+    </#list>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <#list tableClass.allFields as field>`${field.columnName}`<#sep>,<#if field_index%3==2>${"\n        "}</#if></#list>
+    </sql>
+</mapper>
+~~~
+
 #### BindingResult 参数校验
 
 ##### Annotation
