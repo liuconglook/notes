@@ -727,6 +727,491 @@ _thread.start_new_thread(mouse_move, ("mouse_move", 2, ))
 startClick()
 ~~~
 
+### Shell
+
+变量名：只能英文字母/数字/下划线，首字母不能以数字开头。
+
+- 局部变量：当前脚本中定义的。
+- 环境变量：所有程序都能使用，在系统环境变量中定义。
+- shell变量：由shell程序设置的特殊变量。
+
+~~~bash
+# 赋值
+name="belean"
+# 删除遍历
+unset name
+# 标记只读，不可变，不可删除
+readonly name
+
+# 多行注释，EOF可替换为'或!
+:<<EOF
+for in 循环
+do done 循环体括号
+$file或${file} 使用变量
+遍历C://Users下的目录，并打印
+EOF
+for file in $(ls /c/Users); do 
+	echo ${file};
+done
+~~~
+
+#### 字符串
+
+~~~bash
+# 单引号原样输出
+name='hello'
+
+# 双引号，可转义、拼接字符变量
+str="${name} \"world\"!"
+# hello "world"!
+
+# 字符串长度
+echo ${#str}
+
+# 截取字符串,索引0开始
+echo ${str:7:${#str}}
+
+# 查找str变量中l或o的位置（哪个先出现的就计算哪个，索引位置从1开始）
+echo `expr index "${str}" lo`
+
+# 开启转义 \n换行 \c不换行
+echo -e "hello \n world"
+
+# 结果导向文件
+echo "hello world" > myfile
+
+# 显示命令执行结果
+echo `date`
+~~~
+
+#### 数组
+
+~~~bash
+# 赋值
+arr=(1 2 3 4)
+arr[4]=5
+
+# 数组长度
+echo ${#arr[@]}
+# 或
+echo ${#arr[*]}
+~~~
+
+~~~bash
+#!/bin/bash
+
+# 遍历数组
+arr=(1 2 3 4)
+for i in ${arr[@]}
+do 
+	echo ${i}
+done
+~~~
+
+#### 参数传递
+
+- $#：参数个数。
+- $*：例如"$1"是第一个参数。
+- $$：脚本运行的当前进程ID号。
+- $!：后台运行的最后一个进程ID号。
+- $-：显示Shell使用的当前选项。
+- $?：显示最后命令的退出状态。0表示没有错误，其他任何值表示有错误。
+
+~~~bash
+# demo.sh
+#!/bin/bash
+echo "Shell";
+echo "文件名：$0";
+echo "参数1：$1";
+echo "参数2：$2";
+echo "参数3：$3";
+echo "$$";
+echo "$!";
+echo "$-";
+echo "$?";
+# 执行结果
+$ demo.sh 1 2 3
+Shell
+文件名：./demo.sh
+参数1：1
+参数2：2
+参数3：3
+283
+
+hB
+0
+~~~
+
+#### 运算符
+
+~~~bash
+# + - * / %
+val=`expr 2 + 2`
+
+# == !=
+bool=`expr 2 == 2`
+
+# 表达式用[]包裹或(())
+# []适用于-lt等，(())适用于<等
+a=2
+b=2
+if [ $a == $b ]
+then
+	echo "a = b"
+else
+	echo "a != b"
+fi
+
+# 关系运算符 只支持数字比较
+# -eq -ne 相等、不等
+# -gt -lt 大于、小于
+# -ge -le 大于等于、小于等于
+if [ $a -ge $b ]
+then
+	echo "a >= b"
+fi
+
+# 布尔运算 !非、-o或、-a与
+# 非0即真
+if [ $a == $b -a $a == 2 ]
+then
+	echo "a = b = 2"
+fi
+# &&与、||或
+
+# 字符串运算符
+# = != 相等、不等
+# -z 长度是否为0
+# -n 长度是否不为0
+# $ 是否为空
+
+# 文件测试运算符
+# -r -w -x 是否可读、可写、可执行
+# -d -f 是否是目录、文件
+# -s 是否为空（文件大小）
+# -e 是否存在
+
+# -b 是否是块设备文件
+# -c 是否是字符设备文件
+# -g 是否设置了SGID位
+# -k 是否设置了粘着位(Sticky Bit)
+# -p 是否有名管道
+# -u 是否设置了SUID位
+# -S 是否是socket
+# -L 是否存在并且是一个符号链接
+~~~
+
+#### 流程控制
+
+- break：退出循环
+- continue：结束本次循环，继续下次循环
+
+~~~bash
+# if
+if 条件表达式 
+then
+	条件成立
+fi
+
+# if else
+if 条件表达式
+then
+	条件成立
+else
+	条件不成立
+fi
+
+# elif
+if 条件表达式
+then
+	条件成立
+elif
+then
+	条件成立
+else
+	条件不成立
+fi
+
+# case esac：类似switch case
+a=1
+case ${a} in
+	0)
+		echo 'case 0'
+	;;
+	1)
+		echo 'case 1'
+	;;
+	2)
+		echo 'case 2'
+	;;
+esac
+
+# for in
+arr=(1 2 3 4)
+for item in ${arr[@]}
+do
+	echo ${item}
+done
+# 或 写成一行
+for item in ${arr[@]}; do echo ${item}; done;
+
+# for
+for(( i=0; ${i}<${#arr[@]}; `expr i++` ))
+do
+	echo ${arr[i]}
+done
+
+# while
+i=0
+while(( ${i} < ${#arr[*]} ))
+do
+	echo ${arr[i]}
+	let "i++"
+done
+
+# until 循环 条件为false时循环
+a=0
+until [ ! ${a} -lt 10 ]
+do
+	echo ${a}
+	let "a++"
+done
+~~~
+
+#### 函数
+
+~~~bash
+# 获取参数从1开始
+printer(){
+	echo "print:${1}"
+}
+printer "hello world" "abc"
+
+# 返回值通过$?调用
+inputPrint() {
+	echo "请输入："
+	read content
+	return ${content}
+}
+inputPrint
+echo "print：$?"
+~~~
+
+#### 输入/输出重定向
+
+~~~bash
+# 1、将命令执行的结果输出到文件
+# 追加写入>
+ls > outFile.text
+# 查看
+cat outFile.text
+
+# 2、输入重定向
+# 查看文件行数
+wc -l outFile.text
+# 结果：3 outFile.text
+# 重定向后，取文件内容
+wc -l < outFile.text
+# 结果：3
+# 对outFile.text文件进行模糊查询并显示
+cat |grep 'demo' < outFile.text
+
+# 3、写入指定文件
+# 标准输入文件(stdin)：0
+# 标准输出文件(stdout)：1
+# 标准错误文件(stderr)：2
+# 默认输入：0<
+# 默认写入：1>
+
+# 将stderr与stdout合并，写入file
+ls > file 2>&1
+
+# 4、执行命令，不想要结果
+ls > /dev/null
+~~~
+
+#### 文件包含
+
+引入sh脚本
+
+~~~bash
+. fileName
+# 或
+source fileName
+~~~
+
+> bash1.sh
+
+~~~bash
+#!/bin/bash
+str="hello world"
+~~~
+
+> bash2.sh
+
+~~~bash
+#!/bin/bash
+echo "bash1.sh: ${str}"
+~~~
+
+> 执行
+
+~~~bash
+$ ./bash2.sh
+source bash1.sh: hello world
+~~~
+
+### GitHub Actions
+
+https://docs.github.com/cn/actions/learn-github-actions/understanding-github-actions
+
+工作流程：由事件驱动的工作流程，可在github上进行构建、测试、打包、发布或部署项目。
+
+在仓库创建目录：`.github/workflows`
+
+在目录下创建文件：`config.yml`，名称随意
+
+~~~yml
+# 工作流名称
+name: GitHub Actions 
+# 触发事件
+on: [push]
+# 工作流
+jobs:
+  # 工作名称
+  Explore-GitHub-Actions:
+    # 所在的运行器
+    runs-on: ubuntu-latest
+    # 步骤
+    steps:
+      - run: echo "触发事件：${{ github.event_name }}"
+      - run: echo "运行所在的机器：${{ runner.os }}"
+      - run: echo "分支名称：${{ github.ref }} ，及仓库名称：${{ github.repository }}"
+      - name: Check out repository code
+        # 检出仓库，才能对仓库进行操作
+        uses: actions/checkout@v2 
+      - run: echo "已克隆目标仓库，准备测试你的代码"
+      - name: List files in the repository
+        # 将查看到该仓库下的目录列表
+        run: |
+          ls ${{ github.workspace }}
+      - run: echo "工作状态：${{ job.status }}"
+~~~
+
+一个工作流下有多个工作（jobs），每个工作下有多个步骤（steps），每个步骤可以执行多个操作（action）。
+
+> 运行器（runs-on）
+
+https://docs.github.com/cn/actions/using-github-hosted-runners/about-github-hosted-runners
+
+GitHub 托管的运行器基于 Ubuntu Linux、Microsoft Windows 和 macOS。
+
+- Ubuntu Linux：ubuntu-latest
+- Microsoft Windows：windows-latest
+- macOS：macos-latest
+
+#### 事件（on）
+
+~~~yml
+# 单一事件
+on: push
+
+# 事件列表
+on: [push, pull_request]
+
+# main分支push事件
+on:
+  push:
+    branches:
+      - main
+      
+# 创建，触发发布事件
+on:
+  release
+    types: [created]
+~~~
+
+#### 环境变量（env）
+
+https://docs.github.com/cn/actions/learn-github-actions/environment-variables
+
+环境变量区分大小写
+
+> github环境变量
+
+~~~bash
+# 触发事件
+${{ github.event_name }}
+# 所在运行器
+${{ runner.os }}
+# 分支名称
+${{ github.ref }}
+# 仓库名称
+${{ github.repository }}
+# 工作目录
+${{ github.workspace }}
+# 工作状态
+${{ job.status }}
+~~~
+
+> 自定义环境变量
+
+`jobs.<job_id>.steps[*].env`、`jobs.<job_id>.env` 和 `env`
+
+~~~bash
+env:
+	ROOT_ENV: "ROOT ENV"
+jobs:
+  first-job:
+      env:
+        COMMON_ENV: "COMMON ENV"
+      steps:
+        - name: test env
+          run: echo "${{ env.ROOT_ENV }}"
+          run: echo "${{ env.COMMON_ENV }}"
+          run: echo "${{ env.NAME }}"
+          env:
+            NAME: "Hello World"
+~~~
+
+test-env.js
+
+~~~js
+console.log(process.env.ROOT_ENV)
+console.log(process.env.COMMON_ENV)
+console.log(process.env.NAME)
+~~~
+
+#### 步骤（steps）
+
+~~~yml
+steps:
+  - name: step1 # 步骤名称
+    uses: actions/checkout@v2 # 选择某个仓库中定义的操作，@可用选择commit/分支/tag
+    
+  - name: step2
+  	if: ${{ failure() }} # 条件满足才执行该步骤，例如：failure()表示上一个步骤是否失败
+  	shell: bash # 指定shell
+  	run: echo "failure !!" # 执行shell命令
+~~~
+
+在工作流程所在仓库中操作
+
+~~~yml
+steps:
+  - name: Check out repository
+    uses: actions/checkout@v2
+  - name: step1 # 使用所在仓库中的操作，必须有上面步骤的检出仓库操作
+    uses: ./.github/actions/my-action
+    with: # 传递参数，myaction使用INPUT_USER_NAME、INPUT_PASSWORD作为环境变量
+      user_name: root
+      password: 123	
+~~~
+
+
+
+
+
 ### MSQL
 
 #### 常用函数
@@ -2510,11 +2995,26 @@ weatherStation
 
 在我看来，本书的很多重构手法都是一种编程经验，与实际编程中所感悟的有一定重合，毕竟好的编程经验会被使用，并被记录下来。
 
-
-
-
-
 https://www.kancloud.cn/sstd521/refactor/194259
 
-157
+#### 奇特的一生
+
+唐·吉诃徳在一次历险中，他把风车当作抗争对象，却无论如何都不明白他的敌人实际上是那看不见的“风”，还有那原本应该隶属于他的、却竟然完全不受他控制、反倒成了他的主人的“他的大脑”。
+
+
+
+13
+
+
+
+~~~java
+// frame同源访问：表示该页面可以在相同域名页面的 frame 中展示。
+// https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/X-Frame-Options
+X-Frame-Options: sameorigin
+// https://docs.spring.io/spring-security/site/docs/5.0.x/reference/html/headers.html#headers-hsts
+ServerHttpSecurity.headers().frameOptions().mode(XFrameOptionsServerHttpHeadersWriter.Mode.SAMEORIGIN)
+// https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/config/web/server/ServerHttpSecurity.html#headers()
+HttpSecurity.headers().frameOptions().sameOrigin()
+                .httpStrictTransportSecurity().disable();
+~~~
 
