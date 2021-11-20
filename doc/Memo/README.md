@@ -736,6 +736,10 @@ startClick()
 - shell变量：由shell程序设置的特殊变量。
 
 ~~~bash
+# set：一般写在最前面
+set -e # 若指令返回值不等于0（0表示成功执行），则立即退出shell
+set -x # 输出每个操作的结果
+
 # 赋值
 name="belean"
 # 删除遍历
@@ -1061,6 +1065,91 @@ $ ./bash2.sh
 source bash1.sh: hello world
 ~~~
 
+### Dockerfile
+
+https://yeasy.gitbook.io/docker_practice/introduction/what
+
+使用dockerfile脚本构建镜像
+
+`项目目录/Dockerfile`
+
+- FROM：基于某个镜像，以便进行操作
+
+- COPY：拷贝文件到容器
+
+- ADD：拷贝文件到容器，如果是压缩包，则会解压
+
+- RUN：执行操作，可以有多行，在docker build时执行
+
+  - 通常用于安装软件包。
+  - 每一个RUN都会启动一个容器，都是新建的一层。所以RUN之间是没有关联的。
+
+- CMD：执行操作，在docker run时运行
+
+  - 通常用于运行程序，多个CMD只会生效最后一个。
+
+  - 如果docker run指定了参数，则CMD将被忽略。
+
+  - ~~~dockerfile
+    CMD echo "hello world" # 执行shell命令
+    CMD ["/demo.sh", "hello", "world"] # 执行shell脚本文件，及设置的参数
+    CMD ["hello", "world"] # 为ENTRYPOINT提供默认参数
+    ~~~
+
+- ENTRYPOINT：执行操作，在docker run时运行
+
+  - 与CMD用法类似。
+  - 多个ENTRYPOINT只会生效最后一个。
+  - 不同在于，其一定会执行。
+
+- ENV：环境变量
+
+  - ~~~dockerfile
+    ENV key value
+    ENV key1=value1 key2=value2
+    ~~~
+
+  - 后续命令中使用：`$key`
+
+- ARG：参数
+
+  - 用法与ENV一致。
+  - 仅在dockerfile中有效，在运行的容器中无效。
+
+- VOLUME：匿名数据卷
+
+  - 设置默认要挂着的目录，挂载到匿名数据卷。
+
+  - 防止启动时忘挂载目录，导致数据丢失和容器变大。
+
+  - ~~~dockerfile
+    VOLUME ["",""]
+    VoLUME ""
+    ~~~
+
+- EXPOSE：挂载端口，随机挂载端口
+
+  - ~~~dockerfile
+    # 容器内8080，随机挂载到8080或8081
+    EXPOSE 8080 [8080,8081]
+    ~~~
+
+- WORKDIR：指定工作目录
+
+  - ~~~dockerfile
+    WORKDIR /
+    ~~~
+
+  - 类似cd，统一不同层的工作目录
+
+- USER：指定用户和组
+
+  - 用户和组必须已经存在
+
+  - ~~~dockerfile
+    USER userName[:group]
+    ~~~
+
 ### GitHub Actions
 
 https://docs.github.com/cn/actions/learn-github-actions/understanding-github-actions
@@ -1174,14 +1263,6 @@ jobs:
             NAME: "Hello World"
 ~~~
 
-test-env.js
-
-~~~js
-console.log(process.env.ROOT_ENV)
-console.log(process.env.COMMON_ENV)
-console.log(process.env.NAME)
-~~~
-
 #### 步骤（steps）
 
 ~~~yml
@@ -1206,6 +1287,192 @@ steps:
     with: # 传递参数，myaction使用INPUT_USER_NAME、INPUT_PASSWORD作为环境变量
       user_name: root
       password: 123	
+~~~
+
+> Note.js环境
+
+~~~yml
+- name: install Note.js
+  uses: actions/setup-node@v2-beta
+  with:
+    node-version: '12'
+~~~
+
+> Python3环境
+
+~~~yml
+- name: install Python3
+  uses: actions/setup-python@v1
+  with:
+    python-version: '3.x'
+    architecture: 'x64'
+~~~
+
+> Git环境
+
+
+
+
+
+#### 元数据（action）
+
+Docker 和 JavaScript 操作需要元数据文件。文件名时必须是`action.yml`或`action.yaml`，其主要定义操作的输入、输出和进入点。
+
+~~~yml
+name: 'git-flow'
+description: 'git-flow and actions test'
+author: 'liucong'
+branding:
+  icon: 'git-branch'
+  color: 'gray-dark'
+# 输入：uses本操作时，可通过with传参
+inputs:
+  user_name:
+    description: 'The is username'
+    require: true
+    # default: root
+  password:
+    description: 'The is password'
+    require: true
+outputs:
+  is_login:
+    description: 'is login in successfully'
+    value: ${{ steps }}
+~~~
+
+#### 拉取代码
+
+> 使用ssh登录git
+
+entrypoint.sh
+
+~~~bash
+#!/bin/sh
+# 任意语句执行的失败都会退出shell
+set -e
+# 创建ssh秘钥文件
+if [ -n "$SSH_PRIVATE_KEY" ]
+then
+  mkdir -p /root/.ssh
+  echo "$SSH_PRIVATE_KEY" > /root/.ssh/id_rsa
+  chmod 600 /root/.ssh/id_rsa
+fi
+# 追加主机认证
+if [ -n "$SSH_KNOWN_HOSTS" ]
+then
+  mkdir -p /root/.ssh
+  echo "StrictHostKeyChecking yes" >> /etc/ssh/ssh_config
+  echo "$SSH_KNOWN_HOSTS" > /root/.ssh/known_hosts
+  chmod 600 /root/.ssh/known_hosts
+else
+  echo "WARNING: StrictHostKeyChecking disabled"
+  echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+fi
+# 复制id_rsa、ssh_config、known_hosts到~/.ssh目录下，不需要异常信息，也不管是否复制成功
+mkdir -p ~/.ssh
+cp /root/.ssh/* ~/.ssh/ 2> /dev/null || true
+# 执行拉取代码的脚本
+sh -c "/git-pull.sh $*"
+~~~
+
+> git-pull.sh
+
+~~~bash
+#!/bin/sh
+
+set -e
+
+SOURCE_REPO=$1 # 源仓库地址git@github.com:liuconglook/notes.git
+DESTINATION_REPO=$2 # 目标仓库地址
+SOURCE_DIR=$(basename "$SOURCE_REPO") # notes.git
+DRY_RUN=$3
+
+GIT_SSH_COMMAND="ssh -v"
+
+echo "SOURCE=$SOURCE_REPO"
+echo "DESTINATION=$DESTINATION_REPO"
+echo "DRY RUN=$DRY_RUN"
+
+# 克隆源项目版本库
+git clone --mirror "$SOURCE_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
+# 设置提交时的远程仓库地址，哑地址：file:///i/notes
+git remote set-url --push origin "$DESTINATION_REPO"
+# 更新版本库
+git fetch -p origin
+# Exclude refs created by GitHub for pull request.
+git for-each-ref --format 'delete %(refname)' refs/pull | git update-ref --stdin
+
+if [ "$DRY_RUN" = "true" ]
+then
+    echo "INFO: Dry Run, no data is pushed"
+    git push --mirror --dry-run
+else
+    git push --mirror
+fi
+~~~
+
+> action.yml
+
+~~~yml
+name: 'Mirror a repository using SSH'
+description: 'Action for mirroring a repository in another location (Bitbucket, GitHub, GitLab, …) using SSH.'
+branding:
+  icon: 'copy'
+  color: 'orange'
+inputs:
+  source-repo:
+    description: 'SSH URL of the source repo.'
+    required: true
+    default: ''
+  destination-repo:
+    description: 'SSH URL of the destination repo.'
+    required: true
+    default: ''
+  dry-run:
+    description: 'Execute a dry run.'
+    required: false
+    default: 'false'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.source-repo }}
+    - ${{ inputs.destination-repo }}
+    - ${{ inputs.dry-run }}
+~~~
+
+>Dockerfile
+
+~~~dockerfile
+# 基于alpine操作系统
+FROM alpine
+# 安装 Git和ssh客户端
+RUN apk add --no-cache git openssh-client
+# 拷贝仓库下shell脚本，到系统根目录
+ADD *.sh /
+# 执行登录ssh
+ENTRYPOINT ["/entrypoint.sh"]
+~~~
+
+>.github/workflows/config.yml
+
+~~~yml
+name: Keep the major version tag up-to-date
+
+on:
+  release:
+    types: [published, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update-major-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: Actions-R-Us/actions-tagger@v2
 ~~~
 
 
