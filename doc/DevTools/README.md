@@ -163,6 +163,8 @@ Ctrl+Alt+F：提取属性
 
 最新版IDEA无限重置30天
 
+添加插件仓库：https://plugins.zhile.io
+
 >CamelCase
 
 Shift + Alt + U：转换大小驼峰、下划线、全大写、小写。
