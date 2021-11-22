@@ -1340,7 +1340,9 @@ outputs:
     value: ${{ steps }}
 ~~~
 
-#### 拉取代码
+#### 自动拉取代码
+
+https://github.com/liuconglook/git-pull-action
 
 > 使用ssh登录git
 
@@ -1372,6 +1374,7 @@ fi
 mkdir -p ~/.ssh
 cp /root/.ssh/* ~/.ssh/ 2> /dev/null || true
 # 执行拉取代码的脚本
+chmod 700 /git-pull.sh
 sh -c "/git-pull.sh $*"
 ~~~
 
@@ -1385,36 +1388,33 @@ set -e
 SOURCE_REPO=$1 # 源仓库地址git@github.com:liuconglook/notes.git
 DESTINATION_REPO=$2 # 目标仓库地址
 SOURCE_DIR=$(basename "$SOURCE_REPO") # notes.git
-DRY_RUN=$3
 
 GIT_SSH_COMMAND="ssh -v"
 
 echo "SOURCE=$SOURCE_REPO"
 echo "DESTINATION=$DESTINATION_REPO"
-echo "DRY RUN=$DRY_RUN"
 
-# 克隆源项目版本库
-git clone --mirror "$SOURCE_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
-# 设置提交时的远程仓库地址，哑地址：file:///i/notes
-git remote set-url --push origin "$DESTINATION_REPO"
-# 更新版本库
-git fetch -p origin
-# Exclude refs created by GitHub for pull request.
-git for-each-ref --format 'delete %(refname)' refs/pull | git update-ref --stdin
-
-if [ "$DRY_RUN" = "true" ]
-then
-    echo "INFO: Dry Run, no data is pushed"
-    git push --mirror --dry-run
-else
-    git push --mirror
-fi
+git config --global user.name liucong
+git config --global user.email liuconglook@gmail.com
+# 克隆项目
+git clone "$DESTINATION_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
+# 添加源仓库
+git remote add dest "$SOURCE_REPO"
+mv index.html index
+# 更新代码
+git pull dest master
+# 忽略index文件
+mv index index.html
+git add index.html
+git commit index.html -m'update'
+# 提交更新
+git push origin master
 ~~~
 
 > action.yml
 
 ~~~yml
-name: 'Mirror a repository using SSH'
+name: 'Pull a repository using SSH'
 description: 'Action for mirroring a repository in another location (Bitbucket, GitHub, GitLab, …) using SSH.'
 branding:
   icon: 'copy'
@@ -1428,17 +1428,12 @@ inputs:
     description: 'SSH URL of the destination repo.'
     required: true
     default: ''
-  dry-run:
-    description: 'Execute a dry run.'
-    required: false
-    default: 'false'
 runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
     - ${{ inputs.source-repo }}
     - ${{ inputs.destination-repo }}
-    - ${{ inputs.dry-run }}
 ~~~
 
 >Dockerfile
@@ -1450,7 +1445,8 @@ FROM alpine
 RUN apk add --no-cache git openssh-client
 # 拷贝仓库下shell脚本，到系统根目录
 ADD *.sh /
-# 执行登录ssh
+# 执行入口shell
+RUN chmod +x entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 ~~~
 
@@ -1475,7 +1471,48 @@ jobs:
       - uses: Actions-R-Us/actions-tagger@v2
 ~~~
 
+> 从Github拉取最新代码到Gitee，并自动部署Pages
 
+- 需Github和Gitee都有相同的仓库，且启动Pages
+  - Gitee可通过导入Github仓库进行首次同步。
+- 在Github仓库Setting设置Secrets，保存Gitee登录所需的秘钥和密码。
+
+- 在仓库下创建：.github/workflows/config.yml
+
+~~~yml
+name: Config
+
+on: page_build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync to Gitee
+        uses: liuconglook/git-pull-action@master # wearerequired/git-mirror-action@v1.0.1
+        env:
+          # 注意在 Settings->Secrets 配置 GITEE_RSA_PRIVATE_KEY
+          SSH_PRIVATE_KEY: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
+        with:
+          # 注意替换为你的 GitHub 源仓库地址
+          source-repo: git@github.com:liuconglook/notes.git
+          # 注意替换为你的 Gitee 目标仓库地址
+          destination-repo: git@gitee.com:cleve/notes.git
+
+      - name: Build Gitee Pages
+        uses: yanglbme/gitee-pages-action@main
+        with:
+          # 注意替换为你的 Gitee 用户名
+          gitee-username: cleve
+          # 注意在 Settings->Secrets 配置 GITEE_PASSWORD
+          gitee-password: ${{ secrets.GITEE_PASSWORD }}
+          # 注意替换为你的 Gitee 仓库，仓库名严格区分大小写，请准确填写，否则会出错
+          gitee-repo: notes
+          # 要部署的分支，默认是 master，若是其他分支，则需要指定（指定的分支必须存在）
+          branch: master
+~~~
+
+- 注：无法解决冲突问题，避免直接修改Gitee仓库，而是通过自动pull更新。如需镜像拷贝，更改为注释的wearerequired/git-mirror-action@v1.0.1即可
 
 
 
