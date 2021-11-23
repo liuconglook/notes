@@ -786,6 +786,17 @@ echo "hello world" > myfile
 
 # 显示命令执行结果
 echo `date`
+
+# 查找替换
+IGNORE_FILES="index.html,README.md"
+${IGNORE_FILES//,/"\n"} # index.html\nREADME.md
+
+# 按字符串分隔
+files=(${IGNORE_FILES//,/"\n"})  
+for file in ${files[@]}
+do
+   echo "$file"
+done
 ~~~
 
 #### 数组
@@ -1349,7 +1360,7 @@ https://github.com/liuconglook/git-pull-action
 entrypoint.sh
 
 ~~~bash
-#!/bin/sh
+#!/bin/bash
 # 任意语句执行的失败都会退出shell
 set -e
 # 创建ssh秘钥文件
@@ -1375,40 +1386,70 @@ mkdir -p ~/.ssh
 cp /root/.ssh/* ~/.ssh/ 2> /dev/null || true
 # 执行拉取代码的脚本
 chmod 700 /git-pull.sh
-sh -c "/git-pull.sh $*"
+source "/git-pull.sh" $*
 ~~~
 
 > git-pull.sh
 
 ~~~bash
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
 SOURCE_REPO=$1 # 源仓库地址git@github.com:liuconglook/notes.git
 DESTINATION_REPO=$2 # 目标仓库地址
+IGNORE_FILES=$3 # 忽略文件列表
 SOURCE_DIR=$(basename "$SOURCE_REPO") # notes.git
 
 GIT_SSH_COMMAND="ssh -v"
 
 echo "SOURCE=$SOURCE_REPO"
 echo "DESTINATION=$DESTINATION_REPO"
+echo "IGNORE_FILES=$IGNORE_FILES"
 
 git config --global user.name liucong
 git config --global user.email liuconglook@gmail.com
-# 克隆项目
+
+# 拷贝忽略更新的文件
+git init ignore && cd ignore
+git config core.sparsecheckout true
+echo -e "${IGNORE_FILES//,/"\n"}" >> .git/info/sparse-checkout
+git remote add origin "$DESTINATION_REPO"
+git pull origin master
+
+echo "backups finish."
+
+# 镜像仓库
+cd ../
+
+git clone --mirror "$SOURCE_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
+git remote set-url --push origin "$DESTINATION_REPO"
+git fetch -p origin
+# Exclude refs created by GitHub for pull request.
+git for-each-ref --format 'delete %(refname)' refs/pull | git update-ref --stdin
+git push --mirror
+
+echo "mirror finish."
+
+# 恢复忽略文件
+cd ../
+rm -r "$SOURCE_DIR"
+
 git clone "$DESTINATION_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
-# 添加源仓库
-git remote add dest "$SOURCE_REPO"
-mv index.html index
-# 更新代码
-git pull dest master --rebase
-# 忽略index文件
-mv index index.html
-git add index.html
-git commit index.html -m'update'
-# 提交更新
+
+files=(${IGNORE_FILES//,/ })
+for file in ${files[@]}
+do
+   mv "../ignore/$file" "./$file"
+done
+
+echo "reset ignore file finish."
+
+git add -A
+git commit -am'update'
 git push origin master
+
+echo "finish."
 ~~~
 
 > action.yml
@@ -1428,12 +1469,17 @@ inputs:
     description: 'SSH URL of the destination repo.'
     required: true
     default: ''
+  ignore-files:
+    description: 'Ignore updating the file list.'
+    required: true
+    default: ''
 runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
     - ${{ inputs.source-repo }}
     - ${{ inputs.destination-repo }}
+    - ${{ inputs.ignore-files }}
 ~~~
 
 >Dockerfile
@@ -1441,6 +1487,11 @@ runs:
 ~~~dockerfile
 # 基于alpine操作系统
 FROM alpine
+RUN apk update \
+        && apk upgrade \
+        && apk add --no-cache bash \
+        && rm -rf /var/cache/apk/* \
+        && /bin/bash
 # 安装 Git和ssh客户端
 RUN apk add --no-cache git openssh-client
 # 拷贝仓库下shell脚本，到系统根目录
@@ -1498,6 +1549,8 @@ jobs:
           source-repo: git@github.com:liuconglook/notes.git
           # 注意替换为你的 Gitee 目标仓库地址
           destination-repo: git@gitee.com:cleve/notes.git
+          # 你需要忽略更新的文件列表，多个文件用逗号隔开
+          ignore-files: index.html
 
       - name: Build Gitee Pages
         uses: yanglbme/gitee-pages-action@main
@@ -1511,8 +1564,6 @@ jobs:
           # 要部署的分支，默认是 master，若是其他分支，则需要指定（指定的分支必须存在）
           branch: master
 ~~~
-
-- 注：无法解决冲突问题，避免直接修改Gitee仓库，而是通过自动pull更新。如需镜像拷贝，更改为注释的wearerequired/git-mirror-action@v1.0.1即可
 
 
 
