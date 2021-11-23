@@ -8,6 +8,12 @@
 # 本地登录
 mysql -uroot -proot # 明文
 mysql -uroot -p # 密文
+
+# 运行远程登录
+update user set Host="%", Password=PASSWORD("123456") WHERE User="root";
+# 生效
+flush privileges
+
 # 远程登录
 mysql -hip -uroot -proot
 mysql --host=ip --user=root --password=root
