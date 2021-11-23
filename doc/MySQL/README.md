@@ -448,7 +448,10 @@ set @@autocommit = 0;
 ~~~sql
 -- 查看数据库隔离级别
 select @@tx_isolation;
+-- 或 5.7以上版本
+select @@transaction_isolation;
 -- 设置数据库隔离级别
+-- READ-UNCOMMITTED、READ-COMMITTED、REPEATABLE-READ、SERIALEZABLE
 set global transaction isolation level 级别字符串;
 ~~~
 
