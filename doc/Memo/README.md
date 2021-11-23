@@ -1402,7 +1402,7 @@ git clone "$DESTINATION_REPO" "$SOURCE_DIR" && cd "$SOURCE_DIR"
 git remote add dest "$SOURCE_REPO"
 mv index.html index
 # 更新代码
-git pull dest master
+git pull dest master --rebase
 # 忽略index文件
 mv index index.html
 git add index.html
