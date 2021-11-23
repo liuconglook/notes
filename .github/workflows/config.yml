@@ -16,6 +16,8 @@ jobs:
           source-repo: git@github.com:liuconglook/notes.git
           # 注意替换为你的 Gitee 目标仓库地址
           destination-repo: git@gitee.com:cleve/notes.git
+          # 你需要忽略更新的文件列表，多个文件用逗号隔开
+          ignore-files: index.html
 
       - name: Build Gitee Pages
         uses: yanglbme/gitee-pages-action@main
