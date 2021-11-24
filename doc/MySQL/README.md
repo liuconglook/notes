@@ -9,7 +9,7 @@
 mysql -uroot -proot # 明文
 mysql -uroot -p # 密文
 
-# 运行远程登录
+# 允许远程登录
 update user set Host="%", Password=PASSWORD("123456") WHERE User="root";
 # 生效
 flush privileges
@@ -364,7 +364,7 @@ grant proxy on ''@'' to 'root'@'localhost' with grant option
 
 例如：人和身份证。
 
-分析：一个人只有一个省份证，一个身份证只能对应一个人。
+分析：一个人只有一个身份证，一个身份证只能对应一个人。
 
 实现：任意一方添加唯一外键指向另一方的主键。
 
