@@ -5291,6 +5291,10 @@ service-url:
 spring:
   cloud:
     gateway:
+      # 全局超时配置
+      httpclient:
+        connect-timeout: 1000
+        response-timeout: 5s
       routes:
         - id: path_route #路由的ID
           uri: ${service-url.user-service}/user/{id} #匹配后路由地址
@@ -7430,11 +7434,52 @@ public class AccountServiceImpl implements AccountService {
 
 
 
+### 搭建自己的微服务网格
 
+#### 注册/配置中心
 
+nacos
 
+#### 服务网关
 
+- Gateway
+  - 路由
+  - 熔断、降级
+  - 限流
+- Swagger 
+  - knife4j整合微服务接口文档
 
+#### 服务监控
+
+- Spring Boot Admin：SpringBoot单体应用监控。还可配合注册中心做监控中心使用，监控微服务应用。
+- Spring Cloud Sleuth：分布式系统中跟踪服务间调用的工具
+
+#### 接口鉴权
+
+Oauth2
+
+- 密码模式：登录
+- 授权码模式：适用于开放的、安全性较高的API接口
+- 资源服务器：JWT鉴权，接口可允许访问的角色列表
+
+#### 解决分布式问题
+
+##### 服务间调用
+
+OpenFeign+OpenFeign
+
+- OpenFeign
+  - Ribbon：负载均衡
+  - Hystrix：服务熔断、降级
+  - 开启Sentinel
+- Sentinel
+  - 限流
+  - 负载均衡
+  - 服务熔断、降级
+
+##### 分布式事务
+
+Seata
 
 
 
