@@ -29,8 +29,6 @@ intext:优点
 stocks:百度
 ~~~
 
-
-
 ### LayUI
 
 ~~~js
@@ -729,6 +727,25 @@ startClick()
 
 ### Shell
 
+Shell：一种应用程序，可通过指令来访问操作系统内核的服务。（一般指shell程序界面）
+
+Shell脚本：编写的shell指令集。（用Shell语言编写的脚本程序）
+
+sh：早期的shell。
+
+bash：为GNU计划编写的Unix shell，遵循POSIX标准，兼容sh。
+
+POSIX可移植操作系统接口（Portable Operating System Interface of UNIX）。
+
+~~~bash
+#!/bin/bash
+
+
+#!/bin/sh
+# 功能较少，不支持数组
+# 在linux中，/bin/sh软连接的/bin/bash,实际使用的还是bash，等价于#!/bin/bash --posix
+~~~
+
 变量名：只能英文字母/数字/下划线，首字母不能以数字开头。
 
 - 局部变量：当前脚本中定义的。
@@ -738,7 +755,7 @@ startClick()
 ~~~bash
 # set：一般写在最前面
 set -e # 若指令返回值不等于0（0表示成功执行），则立即退出shell
-set -x # 输出每个操作的结果
+set -x # 输出每个操作的结果详细
 
 # 赋值
 name="belean"
@@ -1487,6 +1504,7 @@ runs:
 ~~~dockerfile
 # 基于alpine操作系统
 FROM alpine
+# 安装bash
 RUN apk update \
         && apk upgrade \
         && apk add --no-cache bash \
@@ -1565,7 +1583,424 @@ jobs:
           branch: master
 ~~~
 
+### WebFlux
 
+响应式的web框架
+
+https://docs.spring.io/spring-framework/docs/current/reference/html/web-reactive.html
+
+https://wiki.jikexueyuan.com/project/reactor-2.0/01.html
+
+需了解：lambda、stream、reactor
+
+响应式编程（reactive programming）是一种基于数据流（data stream）和变化传递（propagation of change）的声明式（declarative）的编程范式。
+
+响应式流(Reactive Streams)通过定义一组实体，接口和互操作方法，给出了实现异步非阻塞**背压**的标准。第三方遵循这个标准来实现具体的解决方案，常见的有Reactor，RxJava，Akka Streams，Ratpack等。
+
+- Publisher（发布者/生产者）
+- Subscriber（订阅者/消费者）
+- Processor（发布者与订阅者之间处理数据的缓冲区）
+
+https://mercyblitz.github.io/2018/07/25/Reactive-Programming-%E4%B8%80%E7%A7%8D%E6%8A%80%E6%9C%AF-%E5%90%84%E8%87%AA%E8%A1%A8%E8%BF%B0/
+
+> 例子
+
+optional之前，我们需要主动做空值校验，现在则是被动根据校验结果作为出响应。
+
+stream之前，我们需要主动遍历对每个元素进行多个操作，现在则是流式地做出多个操作。
+
+基于HTTP的主动轮询和基于Netty的被动响应。
+
+命令式编程，大多是阻塞的。响应式编程是非阻塞的。
+
+发布者和订阅者；生产者和消费者；观察者和被观察者。
+
+函数式编程，减少模板代码的编写，规范构建条件，降低编写错误。
+
+#### Reactor
+
+Reactor是一个基础库，可用它构建时效性流式数据应用，或者有低延迟和容错性要求的微/纳/皮级服务。
+
+- reactor-core
+- reactor-bus
+- reactor-streams
+- reactor-net
+
+Spring + Reactor-Stream (Core)： 用 Stream 和 Promise 做后台处理。
+
+#### WebFlux
+
+WebFlux默认集成的是Reactor
+
+- 发布者
+  - Flux：监听n个元素的异步序列流。onNext、onComplete、onError。
+  - Mono：监听一个元素的异步序列流。onComplete、onError。
+- 订阅者
+  - 由Spring Reactive实现。
+
+##### 调用服务
+
+由于网关gateway使用的是webflux，与传统web调用不一样，需要响应式调用。
+
+下面是gateway结合OpenFeign进行服务间调用。
+
+> pom.xml
+
+~~~xml
+<dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+~~~
+
+>Application.java
+
+~~~~java
+@SpringBootApplication
+@EnableFeignClients // 开启OpenFeign
+public class Application {
+	...
+        
+    // 使用WebClient调用Rest服务
+    @Bean
+    @LoadBalanced // 开启负载均衡
+    public WebClient.Builder webClientBuilder(){
+        return WebClient.builder();
+    }
+}
+~~~~
+
+> Service/Controller
+
+~~~java
+@Service
+public class ServiceImpl implements Service{
+    
+    @Autowired
+    private WebClient.Builder webClientBuilder;
+
+    public Result test(){
+        return webClientBuilder.build()
+                .get()
+                .uri("http://service-name/test)
+                .retrieve()
+                .bodyToMono(Result.class)
+                .block();
+    }
+}
+~~~
+
+### MapStruct
+
+java bean映射，例如VO/BO/DTO等，告别BeanUtils.CopyProperties.
+
+使用非常简单，只需配置实体类之间的映射关系即可。
+
+#### 引入
+
+> pom.xml
+
+可配合lombok使用
+
+~~~xml
+<properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <org.mapstruct.version>1.4.2.Final</org.mapstruct.version>
+</properties>
+
+<dependencies>
+        <!-- junit4 -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- mapstruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+</dependencies>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+                <source>${maven.compiler.source}</source>
+                <target>${maven.compiler.target}</target>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.mapstruct</groupId>
+                        <artifactId>mapstruct-processor</artifactId>
+                        <version>${org.mapstruct.version}</version>
+                    </path>
+                    <!-- lombok -->
+                    <path>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                        <version>${org.projectlombok.version}</version>
+                    </path>
+                    <!-- lombok and mapstruct binding -->
+                    <path>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok-mapstruct-binding</artifactId>
+                        <version>${lombok-mapstruct-binding.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+~~~
+
+#### 准备
+
+> 实体类
+
+~~~java
+public class Student {
+    private String name;
+    private Integer age;
+    private Gender gender;
+    private Address address;
+    // all args constructor
+    // getter and setter
+}
+~~~
+
+~~~java
+public class Address {
+    private String name;
+    // all args constructor
+    // getter and setter
+}
+~~~
+
+~~~java
+public enum Gender {
+    MAN("男"),
+    WOMAN("女");
+    
+    private String name;
+    Gender(String name) { this.name = name; }
+    public String getName() { return name; }
+}
+~~~
+
+~~~java
+public class Classes {
+    private String name;
+    // all args constructor
+    // getter and setter
+}
+~~~
+
+> VO
+
+~~~java
+public class StudentVO {
+    private String name;
+    private Integer age;
+    private String gender;
+    private String address;
+    private String classes;
+    // all args constructor
+    // getter and setter
+}
+~~~
+
+#### 一对一映射
+
+~~~java
+@Mapper
+public interface StudentMapper {
+	StudentMapper INSTANCE = Mappers.getMapper(StudentMapper.class);
+
+    /**
+     * 转VO
+     * @param student
+     * @return
+     */
+    @Mapping(target = "address", source = "address.name")
+    @Mapping(target = "gender", source = "gender")
+    @Mapping(target = "classes", ignore = true)
+    StudentVO studentToStudentVO(Student student);
+    
+    /**
+     * VO逆转
+     * @param studentVO
+     * @return
+     */
+    @InheritInverseConfiguration(name = "studentToStudentVO")
+    Student studentVOToStudent(StudentVO studentVO);
+    
+    /**
+     * 转list
+     * @param students
+     * @return
+     */
+    @InheritConfiguration(name = "studentToStudentVO")
+    List<StudentVO> studentsToStudentVOs(List<Student> students);
+    
+    /**
+     * 传入参数：source
+     * 输出参数：target
+     * @param gender
+     * @return
+     */
+    default String getGender(Gender gender) {
+        return gender.getName();
+    }
+
+    /**
+     * 传入参数：source
+     * 输出参数：target
+     * @param gender
+     * @return
+     */
+    default Gender setGender(String gender) {
+        if(Gender.MAN.getName().equals(gender)){
+            return Gender.MAN;
+        }else {
+            return Gender.WOMAN;
+        }
+    }
+}
+~~~
+
+> 测试
+
+~~~java
+public void testStudentToStudentVO() {
+    Student student = new Student("belean", 21, Gender.MAN, new Address("home"), null);
+
+    StudentVO studentVO = StudentMapper.INSTANCE.studentToStudentVO(student);
+    studentCompareVO(student, studentVO);
+}
+public void testStudentVOTOStudent() {
+    StudentVO studentVO = new StudentVO("belean", 21, "男", "home", null);
+
+    Student student = StudentMapper.INSTANCE.studentVOToStudent(studentVO);
+    assertNotNull(student);
+    studentCompareVO(student, studentVO);
+}
+public void testStudentsToStudentVOs() {
+    Student student = new Student("belean", 21, Gender.MAN, new Address("home"));
+    Student student2 = new Student("hello", 22, Gender.WOMAN, new Address("my home"));
+
+    List<Student> students = new ArrayList<>();
+    students.add(student);
+    students.add(student2);
+
+    List<StudentVO> studentVOs = StudentMapper.INSTANCE.studentsToStudentVOs(students);
+    assertNotNull(studentVOs);
+    assertEquals(2, studentVOs.size());
+    studentCompareVO(student, studentVOs.get(0));
+    studentCompareVO(student2, studentVOs.get(1));
+}
+private void studentCompareVO(Student student, StudentVO studentVO) {
+    assertNotNull(student);
+    assertNotNull(studentVO);
+    assertEquals(student.getName(), studentVO.getName());
+    assertSame(student.getAge(), studentVO.getAge());
+    assertEquals(student.getGender().getName(), studentVO.getGender());
+    assertEquals(student.getAddress().getName(), studentVO.getAddress());
+}
+~~~
+
+> 总结
+
+- @Mapper：注解这个映射接口
+  - componentModel = "spring" // 交由Spring容器管理，通过@Autowired注入使用
+- StudentMapper INSTANCE = Mappers.getMapper(StudentMapper.class);
+  - 通过该方式获取实例，交由spring管理后可省略。
+- @Mapping：配置映射关系
+  - target：输出参数
+  - source：输入参数
+  - ignore：忽略对输入参数的映射
+- getGender/setGender
+  - 由于枚举类型无法通过构造方法创建，所以需要手动转换。
+  - setGender是VO逆转才需要的。
+
+#### 原理
+
+mapstruct本质上是通过反射生成Mapper接口对应的实现，从而省去了我们手动编写转换代码的工作。
+
+~~~java
+/**
+ * 转VO
+ * @param student
+ * @return
+ */
+@Mapping(target = "address", source = "address.name")
+@Mapping(target = "gender", source = "gender")
+@Mapping(target = "classes", ignore = true)
+StudentVO studentToStudentVO(Student student);
+~~~
+
+> 在target目录下，通过反编译查看StudentMapperImpl.class
+
+~~~java
+public StudentVO studentToStudentVO(Student student) {
+    if (student == null) {
+        return null;
+    } else {
+        String address = null;
+        String gender = null;
+        String name = null;
+        Integer age = null;
+        address = this.studentAddressName(student);
+        gender = this.getGender(student.getGender());
+        name = student.getName();
+        age = student.getAge();
+        String classes = null;
+        StudentVO studentVO = new StudentVO(name, age, gender, address, (String)classes);
+        return studentVO;
+    }
+}
+~~~
+
+#### 多对一映射
+
+~~~java
+/**
+ * 多对象转VO
+ * @param student
+ * @param classes
+ * @return
+ */
+@Mapping(target = "name", source = "student.name")
+@Mapping(target = "address", source = "student.address.name")
+@Mapping(target = "gender", source = "student.gender")
+@Mapping(target = "classes", source = "classes.name")
+StudentVO studentAndClassesToStudentVO(Student student, Classes classes);
+~~~
+
+> 测试
+
+~~~java
+public void testStudentAndClassesToStudentVO(){
+    Student student = new Student("belean", 21, Gender.MAN, new Address("home"));
+    Classes classes = new Classes("六年一班");
+
+    StudentVO studentVO = StudentMapper.INSTANCE.studentAndClassesToStudentVO(student, classes);
+    studentCompareVO(student, studentVO);
+    assertEquals(classes.getName(), studentVO.getClasses());
+}
+~~~
+
+#### 总结
+
+除了必要的实体类和转换类之外，只需简单的编写映射所需的Mapper接口即可。
+
+学习以上案例基本上够用了，更多使用案例请参考：https://github.com/mapstruct/mapstruct-examples
 
 ### MSQL
 
