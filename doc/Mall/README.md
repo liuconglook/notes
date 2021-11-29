@@ -7440,11 +7440,15 @@ public class AccountServiceImpl implements AccountService {
 
 nacos
 
+- 使用的Ribbon做负载均衡
+
 #### 服务网关
 
 - Gateway
   - 路由
   - 熔断、降级
+    - 可整合hystrix做熔点过滤
+    - 可整合Alibaba Sentinel做熔点过滤
   - 限流
 - Swagger 
   - knife4j整合微服务接口文档
