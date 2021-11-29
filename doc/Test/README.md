@@ -428,6 +428,35 @@ project
 </plugin>
 ~~~
 
+#### meven-compiler-plugin
+
+用于指定maven编译所需的JDK版本。
+
+查看maven与JDK版本的对应关系：http://maven.apache.org/docs/history.html
+
+> 如需使用JDK10、11等更高版本编译，需替换为release
+
+~~~xml
+<properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+</properties>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+                <!--<source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>-->
+                <release>11</release>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+~~~
+
 ### Mockito
 
 mockito是一个模拟对象（Mocking）框架，SpringBootTest自带。
