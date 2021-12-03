@@ -1583,6 +1583,68 @@ jobs:
           branch: master
 ~~~
 
+### Gitlab CI CD
+
+持续集成（Continuous Integration, CI）
+
+持续交付（Continuous Deployment, CD）
+
+#### .gitlab-ci.yml
+
+https://docs.gitlab.com/ee/ci/yaml/index.html
+
+~~~yml
+stages:
+  - build
+  - test
+  - deploy
+
+build-job:
+  stage: build
+  script:
+    - echo "Compiling the code..."
+    - echo "Compile complete."
+
+unit-test-job:
+  stage: test
+  script:
+    - echo "Running unit tests... This will take about 60 seconds."
+    - sleep 60
+    - echo "Code coverage is 90%"
+
+lint-test-job:
+  stage: test
+  script:
+    - echo "Linting code... This will take about 10 seconds."
+    - sleep 10
+    - echo "No lint issues found."
+
+deploy-job:
+  stage: deploy
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."
+~~~
+
+定义管道`pipeline`，或叫流水线作业更顺口。
+
+- stages
+  - 定义的阶段，按顺序执行
+- build-job # 作业名称 随意
+  - stage # 使用定义好的阶段
+  - script  # 执行脚本
+  - image # 所需docker镜像
+  - services # 依赖服务
+
+- before_script
+  - 最开始执行的脚本
+
+https://segmentfault.com/a/1190000022479297
+
+
+
+https://blog.stdioa.com/2019/06/golang-learning-experience/
+
 ### WebFlux
 
 响应式的web框架
