@@ -2066,6 +2066,23 @@ public void testStudentAndClassesToStudentVO(){
 
 ### MSQL
 
+#### 编码设置
+
+~~~sql
+-- Illegal mix of collations (utf8mb4_unicode_ci,IMPLICIT) and (utf8mb4_general_ci,IMPLICIT) for operation '='
+-- 修改表的所有字段编码一致，一般设置utf8或utf8md4
+ALTER TABLE hwkj_user CONVERT TO CHARACTER SET utf8;
+
+-- 查看数据编码
+show variables where Variable_name like 'collation%';
+-- 设置对应编码
+set character_set_client=utf8
+set character_set_connection=utf8
+set character_set_database=utf8
+set character_set_results=utf8
+set character_set_server=utf8
+~~~
+
 #### 常用函数
 
 ~~~sql
