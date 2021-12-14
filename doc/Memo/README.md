@@ -1122,7 +1122,9 @@ $ ./bash2.sh
 source bash1.sh: hello world
 ~~~
 
-### Dockerfile
+### Docker
+
+#### Dockerfile
 
 https://yeasy.gitbook.io/docker_practice/introduction/what
 
@@ -1206,6 +1208,62 @@ https://yeasy.gitbook.io/docker_practice/introduction/what
   - ~~~dockerfile
     USER userName[:group]
     ~~~
+
+#### 修改容器端口映射
+
+> 查看容器id
+
+~~~bash
+# 查看并记录容器id
+docker ps
+CONTAINER ID        PORTS
+xxxxx				0.0.0.0:8090->80/tcp, 0.0.0.0:8022->22/tcp, 0.0.0.0:8433->433/tcp
+# 关闭服务
+systemctl stop docker
+# 进入到容器目录
+cd /var/lib/docker/containers/xxxxx*
+~~~
+
+> 修改端口
+
+/var/lib/docker/containers/容器id
+
+- config.v2.json
+
+~~~json
+"ExposedPorts":{"22/tcp":{}, "443/tcp"{}, "80/tcp":{}}
+# 例如修改80端口为8090
+"ExposedPorts":{"22/tcp":{}, "443/tcp"{}, "8090/tcp":{}}
+~~~
+
+- hostconfig.json
+
+~~~json
+"PortBindings":{
+    "22/tcp":[{"HostIp":"","HostPort":"8022"}],
+    "443/tcp":[{"HostIp":"","HostPort":"8443"}],
+	"80/tcp":[{"HostIp":"","HostPort":"8090"}]
+}
+# 例如修改80端口为8090
+"PortBindings":{
+    "22/tcp":[{"HostIp":"","HostPort":"8022"}],
+    "443/tcp":[{"HostIp":"","HostPort":"8443"}],
+	"8090/tcp":[{"HostIp":"","HostPort":"8090"}]
+}
+~~~
+
+> 最终结果
+
+~~~bash
+# 启动服务
+systemctl start docker
+# 查看容器端口
+docker ps
+CONTAINER ID        PORTS
+xxxxx				0.0.0.0:8090->8090/tcp, 0.0.0.0:8022->22/tcp, 0.0.0.0:8433->433/tcp
+~~~
+
+如需添加端口映射，同理
 
 ### GitHub Actions
 
@@ -1366,8 +1424,6 @@ steps:
 ~~~
 
 > Git环境
-
-
 
 
 
@@ -1618,6 +1674,23 @@ jobs:
 
 持续交付（Continuous Deployment, CD）
 
+#### 修改密码
+
+~~~bash
+# 进入容器
+docker exec -it gitlab /bin/bash
+# 进入控制台
+gitlab-rails console -e production
+# 查找用户
+user = User.find_by(email: 'xx@gmail.com')
+# 新密码
+user.password = '新密码'
+user.password_confirmation = '新密码'
+# 保存后退出
+user.save!
+quit
+~~~
+
 #### .gitlab-ci.yml
 
 https://docs.gitlab.com/ee/ci/yaml/index.html
@@ -1670,9 +1743,51 @@ deploy-job:
 
 https://segmentfault.com/a/1190000022479297
 
+#### gitlab-runner
 
+> 运行容器
 
-https://blog.stdioa.com/2019/06/golang-learning-experience/
+~~~bash
+docker run -d --name gitlab-runner --restart always \
+    -v /path/to/gitlab-runner/config:/etc/gitlab-runner \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    gitlab/gitlab-runner:latest
+~~~
+
+- 由于gitlab-runner在docker中，需挂载docker.sock对docker进行操作，防止docker in docker。
+
+>进入容器
+
+进入Gitlab项目=>Settings=>CI/CD=>Runners Expand
+
+- 可用看到服务地址和注册token
+
+~~~bash
+# 进入容器
+docker exec -it gitlab-runner /bin/bash
+# 注册
+gitlab-runner register
+# 1、输入GitLab服务地址
+http://106.52.3.78:8090
+# 2、输入token
+xxx
+# 3、输入描述
+run ci cd
+# 4、标签(多个用,隔开)
+ci-cd-runner
+# 5、执行器
+docker
+# 6、指定docker默认镜像，当job没有指定镜像时
+alpine:latest
+~~~
+
+博客：https://github.com/zq2599/blog_demos
+
+构建部署：https://blog.csdn.net/boling_cavalry/article/details/106991691
+
+环境变量：进入Gitlab项目=>Settings=>CI/CD=>Variables Expand
+
+go学习：https://blog.stdioa.com/2019/06/golang-learning-experience/
 
 ### WebFlux
 
