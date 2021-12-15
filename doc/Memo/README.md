@@ -1265,6 +1265,78 @@ xxxxx				0.0.0.0:8090->8090/tcp, 0.0.0.0:8022->22/tcp, 0.0.0.0:8433->433/tcp
 
 如需添加端口映射，同理
 
+#### Docker CA
+
+https://服务器地址:2375
+
+~~~bash
+# ca-key.pem
+openssl genrsa -aes256 -out ca-key.pem 4096
+password
+# ca.pem
+openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem
+password
+CN
+省
+市
+组织
+单位
+通用名
+邮箱
+
+# server-key.pem
+openssl genrsa -out server-key.pem 4096
+
+# server.csr
+openssl req -subj "/CN=服务器地址" -sha256 -new -key server-key.pem -out server.csr
+# server白名单
+echo subjectAltName = IP:服务器地址,IP:0.0.0.0 >> extfile.cnf
+echo extendedKeyUsage = serverAuth >> extfile.cnf
+# server-cert.pem
+openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem \-CAcreateserial -out server-cert.pem -extfile extfile.cnf
+password
+# key.pem
+openssl genrsa -out key.pem 4096
+# client.csr
+openssl req -subj '/CN=client' -new -key key.pem -out client.csr
+echo extendedKeyUsage = clientAuth >> extfile.cnf
+# cert.pem
+openssl x509 -req -days 365 -sha256 -in client.csr -CA ca.pem -CAkey ca-key.pem \-CAcreateserial -out cert.pem -extfile extfile.cnf
+password
+
+# 删除证书签名请求
+rm -v client.csr server.csr
+y
+y
+
+# 只读
+chmod -v 0400 ca-key.pem key.pem server-key.pem
+chmod -v 0444 ca.pem server-cert.pem cert.pem
+
+# copy客户端证书，用于远程连接
+ca.pem
+cert.pem
+key.pem
+~~~
+
+> /usr/lib/systemd/system/docker.service
+
+~~~
+ExecStart=/usr/bin/dockerd \
+	-H fd:// -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock \
+	--containerd=/run/containerd/containerd.sock \
+	--tlsverify --tlscacert=/mydata/docker-ca/ca.pem \
+	--tlscert=/mydata/docker-ca/server-cert.pem \
+	--tlskey=/mydata/docker-ca/server-key.pem
+~~~
+
+> 重启docker
+
+~~~bash
+systemctl daemon-reload
+systemctl restart docker
+~~~
+
 ### GitHub Actions
 
 https://docs.github.com/cn/actions/learn-github-actions/understanding-github-actions
@@ -1788,6 +1860,16 @@ alpine:latest
 环境变量：进入Gitlab项目=>Settings=>CI/CD=>Variables Expand
 
 go学习：https://blog.stdioa.com/2019/06/golang-learning-experience/
+
+> 安装指定jar到仓库
+
+~~~
+variables:
+  MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode"
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+mvn install:install-file $MAVEN_CLI_OPTS -Dfile=target/project-0.0.1-SNAPSHOT.jar -DgroupId=com.belean -DartifactId=project -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar $MAVEN_OPTS 
+~~~
 
 ### WebFlux
 
