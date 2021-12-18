@@ -1337,6 +1337,56 @@ systemctl daemon-reload
 systemctl restart docker
 ~~~
 
+#### Registry
+
+http://qinghua.github.io/docker-registry/
+
+使用证书才能访问registry私有仓库
+
+~~~bash
+# 强制删除容器
+docker rm -f registry
+
+# 指定证书
+docker run -d \
+--restart=always \
+--name registry \
+-p 5000:5000 \
+-v /mydata/docker-ca:/certs \
+-v /mydata/registry:/var/lib/registry \
+-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/server-cert.pem \
+-e REGISTRY_HTTP_TLS_KEY=/certs/server-key.pem \
+registry
+
+# 使用证书访问
+curl https://106.52.3.78:5000/v2/_catalog --cacert E:\\ca\\ca.pem
+
+
+# 安装http工具
+yum install -y httpd-tools
+# 生成用户名密码
+htpasswd registry -Bbn root 318341320 > /mydata/docker-ca/htpasswd
+
+# 使用证书和密码
+docker run -d \
+--restart=always \
+--name registry \
+-p 5000:5000 \
+-v /mydata/docker-ca:/certs \
+-v /mydata/registry:/var/lib/registry \
+-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/server-cert.pem \
+-e REGISTRY_HTTP_TLS_KEY=/certs/server-key.pem \
+-e REGISTRY_AUTH=htpasswd \
+-e REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm" \
+-e REGISTRY_AUTH_HTPASSWD_PATH=/certs/htpasswd \
+registry
+
+# 登录
+docker login 106.52.3.78:5000 -u root -p 318341320
+# 安全登录，事先将密码放入文件
+docker login 106.52.3.78:5000 -u root --password-stdin < /mydata/docker-ca/registry-password
+~~~
+
 ### GitHub Actions
 
 https://docs.github.com/cn/actions/learn-github-actions/understanding-github-actions
@@ -1853,6 +1903,91 @@ docker
 alpine:latest
 ~~~
 
+> 登录docker报错
+
+~~~bash
+docker login xxx.x.x.xx:5000 -u root -p xxx
+WARNING! Using --password via the CLI is insecure. Use --password-stdin.
+error during connect: Post "http://docker:2375/v1.24/auth": dial tcp: lookup docker on 183.60.83.19:53: no such host
+~~~
+
+https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4794
+
+添加docker数据卷
+
+gitlab-runner/config/config.toml
+
+~~~toml
+volumes = [..., "/var/run/docker.sock:/var/run/docker.sock"]
+~~~
+
+#### 自动构建部署
+
+.gitlab-ci.yml
+
+~~~yml
+image: maven:3.6.3-jdk-8
+
+variables:
+  MAVEN_CLI_OPTS: "-s ../.m2/settings.xml --batch-mode"
+  MAVEN_OPTS: "-Dmaven.repo.local=../.m2/repository"
+
+# 定义缓存
+# 如果gitlab runner是shell或者docker，此缓存功能没有问题
+# 如果是k8s环境，要确保已经设置了分布式文件服务作为缓存
+cache:
+  key: smart-manage-ci-cache
+  paths:
+  - .m2/repository/
+  - common/target/*.jar
+  - auth/target/*.jar
+
+# 本次构建的阶段：build package
+stages:
+- package
+- build
+
+# 生产jar的job
+make_jar:
+  image: maven:3.6.3-jdk-8
+  stage: package
+  tags:
+  - ci-cd-runner
+  script:
+  - echo "=============== 开始编译源码，在target目录生成jar文件 ==============="
+  - cd common/
+  - mvn $MAVEN_CLI_OPTS $MAVEN_OPTS package
+  - mvn $MAVEN_CLI_OPTS -Dfile=target/common-0.0.1-SNAPSHOT.jar -DgroupId=com.sanquankeji -DartifactId=common -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar $MAVEN_OPTS install
+  - ls ../.m2/repository/com/alibaba/fastjson
+  - ls ../.m2/repository/com/sanquankeji/common
+  - ls ../.m2/repository/com/sanquankeji/common/0.0.1-SNAPSHOT
+  - cd ../auth/
+  - mvn $MAVEN_CLI_OPTS $MAVEN_OPTS package -e -X
+  - echo "target文件夹" `ls auth/target/`
+  - ls ../.m2/repository/com/
+
+# 生产镜像的job
+make_image:
+  image: docker:latest
+  stage: build
+  tags:
+  - ci-cd-runner
+  script:
+  - echo "从缓存中恢复的target文件夹" `ls auth/target/`
+  - echo "=============== 登录Harbor  ==============="
+  - docker login 106.52.3.78:5000 -u root -p 318341320
+  - echo "=============== 打包Docker镜像 ： " auth:$CI_COMMIT_SHORT_SHA "==============="
+  - cd auth/
+  - docker build -t 106.52.3.78:5000/auth:$CI_COMMIT_SHORT_SHA .
+  - echo "=============== 推送到镜像仓库  ==============="
+  - docker push 106.52.3.78:5000/auth:$CI_COMMIT_SHORT_SHA
+  - echo "=============== 登出  ==============="
+  - docker logout
+  - echo "清理掉本次构建的jar文件"
+  - rm -rf ../auth/target/*.jar
+  - rm -rf ../common/target/*.jar
+~~~
+
 博客：https://github.com/zq2599/blog_demos
 
 构建部署：https://blog.csdn.net/boling_cavalry/article/details/106991691
@@ -1861,12 +1996,29 @@ alpine:latest
 
 go学习：https://blog.stdioa.com/2019/06/golang-learning-experience/
 
+https://gihub.com/yangshun2005/gitlab-cicd
+
+~~~bash
+cd common/
+mvn -s ../.m2/settings.xml --batch-mode -Dmaven.repo.local=../.m2/repository package
+mvn -s ../.m2/settings.xml --batch-mode -Dmaven.repo.local=../.m2/repository \
+    -DgroupId=com.sanquankeji \
+    -DartifactId=common \
+    -Dversion=0.0.1-SNAPSHOT \
+    -Dpackaging=jar \
+    install:install-file
+cd ../auth/
+mvn -s ../.m2/settings.xml --batch-mode -Dmaven.repo.local=../.m2/repository package
+~~~
+
+https://dlcdn.apache.org/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.tar.gz
+
 > 安装指定jar到仓库
 
 ~~~
 variables:
   MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode"
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  MAVEN_OPTS: "-Dmaven.repo.local=../.m2/repository"
 
 mvn install:install-file $MAVEN_CLI_OPTS -Dfile=target/project-0.0.1-SNAPSHOT.jar -DgroupId=com.belean -DartifactId=project -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar $MAVEN_OPTS 
 ~~~
