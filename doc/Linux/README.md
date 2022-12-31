@@ -559,6 +559,8 @@ du -h 目录名（目录下的文件大小）
 
 注：-h，以人性化的方式显示。
 
+free
+
 ### 10.3、进程信息
 
 - ps aux（进程详细状况）
@@ -1100,6 +1102,353 @@ mv apache-maven-3.6.3 /usr/local/maven
 # 修改配置<localRepository>/usr/local/repository</localRepository>
 vim /usr/local/maven/conf/settings.xml
 
+~~~
+
+## CentOS8
+
+### 运行模式
+
+~~~bash
+# 查看默认的运行模式
+systemctl get-default
+
+# 切换为命令行模式
+systemctl set-default multi-user.target
+
+# 切换为图形模式
+systemctl set-default graphical.target
+~~~
+
+### 静态IP
+
+~~~bash
+# 1、编辑网卡配置文件，修改IPADDR为192.168.1.105
+vim /etc/sysconfig/network-scripts/ifcfg-ens160
+# IPADDR IP地址
+# GETEWAY 网关
+# NETMASK 虚拟网段
+BOOTPROTO=static
+IPADDR=192.168.1.105
+GETEWAY=192.168.1.1
+NETMASK=255.255.255.0
+
+
+# 2、重启网卡
+nmcli c reload ens160
+
+# 查看状态
+nmcli c up ens160
+
+# 查看DNS
+cat /etc/resolv.conf
+
+# 重新分配额外的dhcp地址
+dhclient
+
+# 安装telnet
+yum -y install telnet*
+
+telnet nps.liuconglook.cn 8084
+
+
+# SELinux或Security-Enhanced Linux是提供访问控制安全策略的机制或安全模块。 简而言之，它是一项功能或服务，用于将用户限制为系统管理员设置的某些政策和规则。
+# 查看SELinux状态
+sestatus
+# 暂时禁用，下次重启失效
+setenforce 0
+# 或
+setenforce Permissive
+
+# 永久禁用或启用SELINUX=disabled/enforcing
+# 修改后重启
+vim /etc/selinux/config
+
+# nmcli
+nmcli
+# 开启nm管理
+nmcli n on
+# 查看
+nmcli d
+~~~
+
+### 设置时区
+
+~~~bash
+# 模糊查询时区
+timedatectl list-timezones | grep -i shang
+# 设置时区
+timedatectl set-timezone Asia/Shanghai
+# 查看当前时间
+date
+~~~
+
+
+
+### 防火墙
+
+~~~bash
+# 进程与状态相关
+# 启动防火墙
+systemctl start firewalld.service
+# 停止防火墙 
+systemctl stop firewalld.service 
+# 查看防火墙状态
+systemctl status firewalld
+# 设置防火墙随系统启动
+systemctl enable firewalld
+# 禁止防火墙随系统启动
+systemctl disable firewalld
+# 查看防火墙状态  
+firewall-cmd --state
+# 更新防火墙规则
+firewall-cmd --reload   
+#查看所有打开的端口
+firewall-cmd --list-ports
+#查看所有允许的服务
+firewall-cmd --list-services
+# 获取所有支持的服务
+firewall-cmd --get-services
+
+# 区域相关
+# 查看所有区域信息  
+firewall-cmd --list-all-zones
+# 查看活动区域信息  
+firewall-cmd --get-active-zones
+# 设置public为默认区域  
+firewall-cmd --set-default-zone=public
+
+# 查看默认区域信息  
+# 接口相关
+firewall-cmd --get-default-zone
+# 将接口eth0加入区域public
+firewall-cmd --zone=public --add-interface=eth0
+# 从区域public中删除接口eth0  
+firewall-cmd --zone=public --remove-interface=eth0
+# 修改接口eth0所属区域为default
+firewall-cmd --zone=default --change-interface=eth0
+# 查看接口eth0所属区域
+firewall-cmd --get-zone-of-interface=eth0
+
+# 端口控制
+# 查询端口是否开放
+firewall-cmd --query-port=8080/tcp
+# 永久添加8080端口例外(全局)
+firewall-cmd --add-port=8080/tcp --permanent
+# 永久删除8080端口例外(全局)
+firewall-cmd --remove-port=8800/tcp --permanent
+# 永久添加8080端口例外(区域public)
+firewall-cmd  --zone=public --add-port=8080/tcp --permanent
+# 永久删除8080端口例外(区域public)
+firewall-cmd  --zone=public --remove-port=8080/tcp --permanent
+# 永久增加65001-65010例外(区域public) 
+firewall-cmd  --zone=public --add-port=65001-65010/tcp --permanent
+
+
+# 添加端口
+firewall-cmd --zone=public --add-port=5051/tcp --permanent
+# 生效配置
+firewall-cmd --reload   
+# 查看开放端口
+firewall-cmd --list-ports
+
+
+~~~
+
+
+
+### 主机名
+
+~~~bash
+# 查看主机名
+hostname
+hostnamectl
+
+# 设置主机名
+hostnamectl set-hostname belean
+
+# 配置域名对应ip
+vim /etc/hosts
+192.168.1.105 belean
+~~~
+
+#### yum
+
+~~~bash
+# 备份
+cd /etc/yum.repos.d
+zip CentOS-Base.repo.zip CentOS-Base.repo CentOS-AppStream.repo
+
+# 删除
+rm Centos-Base.repo
+rm CentOS-AppStream.repo
+
+# 下载 阿里云centos源
+curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo
+
+
+# 清理缓存
+yum clean all
+~~~
+
+### Podman
+
+~~~bash
+# dnf缓存
+dnf makecache
+# 安装容器工具模块
+dnf install -y @container-tools
+
+# 查看版本
+podman version
+
+# 搜索官方镜像
+podman search alpine --filter is-official=true
+
+# 拉取镜像
+podman pull xxx
+
+# 查看镜像
+podman images
+
+# 删除镜像
+podman rmi xxx
+
+# 查询镜像详情
+podman inspect xxx
+
+# 创建容器并运行
+podman run -it --rm xxx /bin/bash
+
+# 后台运行--no-healthcheck
+podman run -d xxx
+
+# 进入容器
+podman exec -it gitlab /bin/bash
+
+# 查看容器
+podman ps -a
+
+# 删除一个容器
+podman container rm xxx
+# 删除所有容器
+podman container rm ${podman ps -a -q}
+
+# 导出容器
+podman save
+# 导入容器
+podman load
+~~~
+
+#### 设置镜像源
+
+vim /etc/containers/registries.conf
+
+~~~bash
+# 使用以下配置的仓库顺序去获取
+unqualified-search-registries = ["docker.io", "registry.access.redhat.com"]
+ 
+# 配置仓库的地址
+[[registry]]
+prefix = "docker.io"
+location = "docker.io"
+
+[[registry]]
+prefix = "k8s.gcr.io"
+location = "registry.aliyuncs.com/google_containers"
+
+[[registry.mirror]]
+location = "docker.mirrors.ustc.edu.cn"
+[[registry.mirror]]
+location = "registry.docker-cn.com"
+~~~
+
+#### Gitlab
+
+~~~bash
+podman pull docker.io/gitlab/gitlab-ce
+
+podman run -d \
+  --no-healthcheck \
+  -p 4433:443 -p 8888:80 -p 222:22 -p 5051:5050 \
+  --name gitlab \
+  --restart always \
+  --privileged \
+  -v /home/gitlab/etc:/etc/gitlab \
+  -v /home/gitlab/logs:/var/log \
+  -v /home/gitlab/data:/var/opt/gitlab \
+  docker.io/gitlab/gitlab-ce
+  
+# 账号:root 初始密码:IT8RXXpSq1vK43KCsQyiBEzHEP1MNdbnUB/TCVhkvO8=
+podman exec -it gitlab /bin/bash
+cat /etc/gitlab/initial_root_password
+
+
+
+# 设置clone地址
+vim /home/gitlab/etc/gitlab.rb
+# 设置https：
+external_url: "gitlab.liuconglook.cn"
+# 设置ssh
+gitlab_rails['gitlab_ssh_host'] = 'gitlab.liuconglook.cn'
+# 禁用nginx
+nginx['enable'] = false
+# 查看
+vim /home/gitlab/data/gitlab-rails/etc/gitlab.yml
+
+# 开机自启
+# /usr/lib/systemd/system/podman_gitlab.service
+[Unit]
+Description=Podman Gitlab Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/podman start -a gitlab
+ExecStop=/usr/bin/podman stop -t 20 gitlab
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+# systemctl 激活开机自启
+systemctl enable podman_gitlab.service
+# 设置开启自启，并立即启动
+systemctl enable --now podman_gitlab.service
+
+~~~
+
+#### nohub
+
+~~~bash
+yum install coreutils
+
+~~~
+
+
+
+## NSSM
+
+下载：https://nssm.cc/download
+
+windows服务（管理员方式运行）
+
+~~~bash
+# 注册服务
+nssm install
+
+
+# 启动服务
+nssm start <servicename>
+# 停止服务：
+nssm stop <servicename>
+# 重启服务：
+nssm restart <servicename>
+# 查看状态：
+nssm status <servicename>
+# 滚动输出：
+nssm rotate <servicename>
+
+# 删除服务
+nssm remove <servicename>
 ~~~
 
 
