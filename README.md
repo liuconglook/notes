@@ -6,16 +6,29 @@
 
 ### 已更新笔记
 
-- Git（Git实战笔记）
-- Mall（SpringBoot练手项目）
-- Database
-  - MySQL
-  - Redis
-  - MongoDB
-- GeekTime
+* Java
+  * Mall
+  * Java
+  * JUC
+  * SpringBoot
+  * Servlet
+* Database
+  * MySQL
+  * Redis
+  * MongoDB
+  * Search
+* GeekTime
   * DesignMode
-- My Center
-  - Memo（随笔）
-  - Test
-  - Bookrack
+  * WorkMethod
+  * Spring
+* Tools
+  * Git
+  * Linux
+  * Docker
+  * Nginx
+  * DevTools
+* My Center
+  * Memo
+  * Test
+  * Bookrack
 
