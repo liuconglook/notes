@@ -1,5 +1,41 @@
 ## Nginx
 
+### 安装
+
+#### 解压安装
+
+~~~bash
+# 下载
+wget http://nginx.org/download/nginx-1.22.0.tar.gz
+# 解压
+tar -zxvf nginx-1.22.0.tar.gz
+# 安装
+cd nginx-1.22.0
+./configure
+./configure --prefix=/usr/local/nginx --with-http_realip_module --with-http_image_filter_module=dynamic --with-http_ssl_module
+make && make install
+
+# 启动
+cd /usr/local/nginx/sbin/
+./nginx
+
+# 安装openSSL
+wget http://downloads.sourceforge.net/gnuwin32/openssl-0.9.8h-1-bin.zip
+zip -r openssl-0.9.8h-1-bin.zip
+cd openssl-0.9.8h-1-bin
+./config --prefix=/usr/local/ --openssldir=/usr/local/openssl -g3 shared zlib-dynamic enable-camellia
+make && make install
+
+# 安装zlib
+wget http://www.zlib.net/zlib-1.2.12.tar.gz
+tar -zxvf zlib-1.2.12.tar.gz
+cd zlib-1.2.12
+./configure
+make && make install
+~~~
+
+
+
 ### 常用命令
 
 ~~~bash
@@ -19,6 +55,10 @@ nginx -s reload
 netstat -ano | findstr 0.0.0.0:8080
 # windows关闭进程
 taskkill /pid [pid]
+
+
+# 
+tail -f /usr/local/nginx/logs/access.log
 ~~~
 
 ### 配置
@@ -245,7 +285,7 @@ server {
     # ssl cert
     listen 443 ssl;
     server_name  liuconglook.cn www.liuconglook.cn;
-    ssl on;
+    # ssl on;
     ssl_certificate /etc/nginx/www.liuconglook.cn.pem;
     ssl_certificate_key /etc/nginx/www.liuconglook.cn.key;
     #ssl_session_cache shared:SSL:1m;
