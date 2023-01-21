@@ -20,6 +20,7 @@
   * [JUC](/JUC/)
   * [SpringBoot](/SpringBoot/)
   * [Servlet](/Servlet/)
+* [Golang](/Golang/)
 * Database
   * [MySQL](/MySQL/)
   * [Redis](/Redis/)
@@ -36,7 +37,8 @@
   * [Nginx](/Nginx/)
   * [DevTools](/DevTools/)
 * My Center
-  * [Memo（随笔）](/Memo/)
-  * [Test（测试笔记）](/Test/)
-  * [Bookrack（我的书架）](/Bookrack/)
+  * [Memo](/Memo/)
+  * [Test](/Test/)
+  * [Bookrack](/Bookrack/)
+  * [Website](/Website/)
 

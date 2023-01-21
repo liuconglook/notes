@@ -118,6 +118,9 @@ git remote -v
 
 # 拉取远程仓库代码，拉取到本地origin，可用作查看远程仓库是否更新，diff比较
 git fetch origin
+
+# 关闭ssl 验证
+git config http.sslVerify"false"
 ~~~
 
 ### 分支操作
@@ -130,6 +133,9 @@ git branch -av
 
 # 创建分支，可以是分支名或tag或commit hash
 git checkout -b localdev origin/develop
+
+# 修改分支名称
+git branch -m localdev newLocaldev
 
 # 删除本地分支，使用-D没有合并则不会删除
 git branch -d xxx

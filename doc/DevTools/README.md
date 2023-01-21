@@ -201,7 +201,15 @@ Shift + Alt + U：转换大小驼峰、下划线、全大写、小写。
 
 翻译窗口：Ctrl + Shift + O
 
+> JRebel and XRebel
 
+激活码：https://www.guidgen.com/
+
+https://jrebel.qekang.com/3709d4f8-efd8-40b9-9bfa-6e6c6a8c8e40
+
+需降级插件版本 2022.4.1
+
+Ctrl + Shift + F9 热部署
 
 
 
@@ -223,7 +231,59 @@ Shift + Alt + U：转换大小驼峰、下划线、全大写、小写。
 
 - ARC cookie exchange：支持高级REST客户端会话管理读取Chrome cookies。
 
+### Sourcetree
 
+Git可视化工具
+
+安装后打开直接关闭
+
+> 创建accounts.json
+
+C:\Users\Administrator\AppData\Local\Atlassian\SourceTree
+
+```json
+[
+  {
+    "$id": "1",
+    "$type": "SourceTree.Api.Host.Identity.Model.IdentityAccount, SourceTree.Api.Host.Identity",
+    "Authenticate": true,
+    "HostInstance": {
+      "$id": "2",
+      "$type": "SourceTree.Host.Atlassianaccount.AtlassianAccountInstance, SourceTree.Host.AtlassianAccount",
+      "Host": {
+        "$id": "3",
+        "$type": "SourceTree.Host.Atlassianaccount.AtlassianAccountHost, SourceTree.Host.AtlassianAccount",
+        "Id": "atlassian account"
+      },
+      "BaseUrl": "https://id.atlassian.com/"
+    },
+    "Credentials": {
+      "$id": "4",
+      "$type": "SourceTree.Model.BasicAuthCredentials, SourceTree.Api.Account",
+      "Username": "",
+      "Email": null
+    },
+    "IsDefault": false
+  }
+]
+```
+
+> user.config
+
+C:\Users\Administrator\AppData\Local\Atlassian\SourceTree.exe_Url_nf12znmaeznytulsuzeaz22lpprrbpo3\3.4.9.0
+
+```xml
+<setting name="AgreedToEULA" serializeAs="String">
+    <value>True</value>
+</setting>
+<setting name="AgreedToEULAVersion" serializeAs="String">
+    <value>20160201</value>
+</setting>
+```
+
+> 再次打开
+
+C:\Users\Administrator\AppData\Local\SourceTree\SourceTree.exe
 
 
 
