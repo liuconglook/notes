@@ -279,6 +279,11 @@ list.stream().forEach(e -> {System.out.print(e)});
 List<JSONObject> list = new ArrayList<>();
 Map<String, String> map = list.stream().collect(Collectors.toMap(e -> e.getString("name"), e -> e.getString("age")));
 
+// Map转List
+Map<String, String> map = new HashMap<>();
+map.values().stream().collect(Collectors.toList());
+map.keys().stream().collect(Collectors.toList());
+
 // 3、分页
 list.stream().skip((page - 1) * limit).limit(limit).collect(Collectors.toList());
 

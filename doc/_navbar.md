@@ -1,7 +1,7 @@
 * [Home]()
 * Java
   * [Mall](/Mall/)
-  * [Java](/Java/)
+  * [Spring](/Spring/)
   * [JUC](/JUC/)
   * [SpringBoot](/SpringBoot/)
   * [Servlet](/Servlet/)
